@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Dream Journal</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        input, textarea { width: 70%; padding: 8px; margin: 8px 0; align-items: center; }
+        button { padding: 10px 20px; margin-top: 10px; }
+        .dream { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<br>
+    <h1>AI Dream Journal</h1>
+
+    <h2>Add a Dream</h2>
+    <input type="text" id="title" placeholder="Dream title">
+    <textarea id="content" placeholder="Write your dream..."></textarea>
+    <input type="text" id="mood" placeholder="Mood (optional)">
+    <br></br>
+    <button onclick="addDream()">Save Dream</button>
+
+    <h2>Your Dreams</h2>
+    <div id="dreams"></div>
+
+    <script>
+        async function fetchDreams() {
+            const res = await fetch('/get_dreams');
+            const data = await res.json();
+            const container = document.getElementById('dreams');
+            container.innerHTML = '';
+            data.forEach(dream => {
+                const div = document.createElement('div');
+                div.className = 'dream';
+                div.innerHTML = `
+                    <strong>${dream.title}</strong> (${dream.date})<br>
+                    Mood: ${dream.mood}<br>
+                    ${dream.content}<br>
+                    <button onclick="deleteDream(${dream.id})">Delete</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function addDream() {
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const mood = document.getElementById('mood').value;
+            const res = await fetch('/add_dream', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({title, content, mood})
+            });
+            if (res.ok) {
+                document.getElementById('title').value = '';
+                document.getElementById('content').value = '';
+                document.getElementById('mood').value = '';
+                fetchDreams();
+            } else {
+                alert('Error saving dream');
+            }
+        }
+
+        async function deleteDream(id) {
+            await fetch(`/delete_dream/${id}`, {method: 'DELETE'});
+            fetchDreams();
+        }
+
+        // Load dreams on page load
+        fetchDreams();
+    </script>
+</body>
+</html>
