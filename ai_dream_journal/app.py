@@ -4,6 +4,9 @@ from flask_cors import CORS
 from datetime import datetime
 import os
 
+# Import AI analysis utilities
+from utils.analyzer import summarize_dream, detect_emotion, extract_themes
+
 # Initialize app
 app = Flask(__name__)
 CORS(app)
@@ -34,23 +37,42 @@ def index():
     return render_template('index.html')
 
 # --- API ROUTES ---
+
+# Add dream with AI analysis
 @app.route('/add_dream', methods=['POST'])
 def add_dream():
     data = request.get_json()
-    if not data.get('title') or not data.get('content'):
+    content = data.get('content')
+    mood = data.get('mood', '')
+
+    if not data.get('title') or not content:
         return jsonify({"error": "Title and content are required"}), 400
 
+    # AI analysis
+    try:
+        summary = summarize_dream(content)
+        ai_mood = detect_emotion(content)
+        themes = ", ".join(extract_themes(content))
+    except Exception as e:
+        print("AI analysis failed:", e)
+        summary = ""
+        ai_mood = mood
+        themes = ""
+
     new_dream = Dream(
-        title=data['title'],
-        content=data['content'],
-        mood=data.get('mood', ''),
-        summary='',
-        themes=''
+        title=data.get('title'),
+        content=content,
+        mood=mood or ai_mood,   # user mood if provided, else AI mood
+        summary=summary,
+        themes=themes
     )
+
     db.session.add(new_dream)
     db.session.commit()
     return jsonify({"message": "Dream added successfully"}), 201
 
+
+# Get all dreams
 @app.route('/get_dreams', methods=['GET'])
 def get_dreams():
     dreams = Dream.query.order_by(Dream.date.desc()).all()
@@ -64,12 +86,15 @@ def get_dreams():
         "date": d.date.strftime("%Y-%m-%d %H:%M:%S")
     } for d in dreams])
 
+
+# Delete dream by ID
 @app.route('/delete_dream/<int:id>', methods=['DELETE'])
 def delete_dream(id):
     dream = Dream.query.get_or_404(id)
     db.session.delete(dream)
     db.session.commit()
     return jsonify({"message": "Dream deleted successfully"})
+
 
 # --- RUN APP ---
 if __name__ == '__main__':
