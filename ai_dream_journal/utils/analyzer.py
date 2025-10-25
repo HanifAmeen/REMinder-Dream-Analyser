@@ -1,9 +1,14 @@
+import joblib
 from transformers import pipeline
 from keybert import KeyBERT
 
-# Initialize models
+# --- Load your trained models ---
+model = joblib.load("models/dream_emotion_model.pkl")
+vectorizer = joblib.load("models/tfidf_vectorizer.pkl")
+label_encoder = joblib.load("models/label_encoder.pkl")
+
+# --- Pretrained models for summarization and keyword extraction ---
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-emotion_classifier = pipeline("text-classification", model="j-hartmann/emotion-english-distilroberta-base", return_all_scores=True)
 kw_model = KeyBERT()
 
 def summarize_dream(text):
@@ -12,10 +17,11 @@ def summarize_dream(text):
     return summary[0]['summary_text']
 
 def detect_emotion(text):
-    """Detect dominant emotion from dream text."""
-    results = emotion_classifier(text)[0]
-    top_emotion = max(results, key=lambda x: x['score'])
-    return top_emotion['label']
+    """Detect dominant emotion from dream text using your trained model."""
+    X_vec = vectorizer.transform([text])
+    pred_encoded = model.predict(X_vec)[0]
+    emotion = label_encoder.inverse_transform([pred_encoded])[0]
+    return emotion
 
 def extract_themes(text):
     """Extract key themes or topics from the dream."""

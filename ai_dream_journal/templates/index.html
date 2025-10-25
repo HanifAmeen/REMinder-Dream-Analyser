@@ -37,6 +37,8 @@
                 div.innerHTML = `
                     <strong>${dream.title}</strong> (${dream.date})<br>
                     Mood: ${dream.mood}<br>
+                    Summary: ${dream.summary || 'N/A'}<br>
+                    Themes: ${dream.themes || 'N/A'}<br>
                     ${dream.content}<br>
                     <button onclick="deleteDream(${dream.id})">Delete</button>
                 `;
