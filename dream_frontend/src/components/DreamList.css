@@ -1,0 +1,76 @@
+.dream-list-container {
+  margin-top: 40px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dream-list-title {
+  text-align: center;
+  color: #6a1b9a;
+  font-size: 28px;
+  margin-bottom: 20px;
+}
+
+.no-dreams {
+  text-align: center;
+  font-style: italic;
+  color: #555;
+}
+
+.dream-card {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  position: relative;
+  transition: transform 0.2s;
+}
+
+.dream-card:hover {
+  transform: translateY(-3px);
+}
+
+.dream-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 18px;
+  color: #4a148c;
+}
+
+.delete-button {
+  background-color: #f44336;
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.delete-button:hover {
+  background-color: #d32f2f;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(244, 67, 54, 0.4);
+}
+
+.dream-themes {
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+.dream-symbols {
+  background: #f0f0f0;
+  padding: 12px;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  margin-top: 10px;
+  font-size: 14px;
+}
