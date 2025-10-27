@@ -1,15 +1,20 @@
-import joblib
 from transformers import pipeline
 from keybert import KeyBERT
+import pandas as pd
+import re
 
-# --- Load your trained models ---
-model = joblib.load("models/dream_emotion_model.pkl")
-vectorizer = joblib.load("models/tfidf_vectorizer.pkl")
-label_encoder = joblib.load("models/label_encoder.pkl")
+# Load the dream dictionary
+dict_path = r"C:\Users\amjad\Downloads\Research Papers 2025\Dream Journal\Datasets\cleaned_dream_interpretations.csv"
+dream_dict_df = pd.read_csv(dict_path)
+dream_dict_df = dream_dict_df.loc[:, ~dream_dict_df.columns.str.contains('^Unnamed|^$', case=False)]
+dream_dict_df.columns = [c.strip().lower() for c in dream_dict_df.columns]
 
-# --- Pretrained models for summarization and keyword extraction ---
+# Initialize NLP models
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+emotion_classifier = pipeline("text-classification", model="j-hartmann/emotion-english-distilroberta-base", return_all_scores=True)
 kw_model = KeyBERT()
+
+# --- NLP Functions ---
 
 def summarize_dream(text):
     """Generate a short summary of the dream."""
@@ -17,13 +22,41 @@ def summarize_dream(text):
     return summary[0]['summary_text']
 
 def detect_emotion(text):
-    """Detect dominant emotion from dream text using your trained model."""
-    X_vec = vectorizer.transform([text])
-    pred_encoded = model.predict(X_vec)[0]
-    emotion = label_encoder.inverse_transform([pred_encoded])[0]
-    return emotion
+    """Detect dominant emotion from dream text."""
+    results = emotion_classifier(text)[0]
+    top_emotion = max(results, key=lambda x: x['score'])
+    return top_emotion['label']
 
 def extract_themes(text):
     """Extract key themes or topics from the dream."""
     keywords = kw_model.extract_keywords(text, top_n=5)
     return [kw[0] for kw in keywords]
+
+# --- Dream Symbol Function ---
+
+def interpret_symbols(text):
+    """Identify dream symbols and their interpretations."""
+    matches = []
+    text_lower = text.lower()
+
+    for _, row in dream_dict_df.iterrows():
+        symbol = str(row['word']).lower().strip()
+        meaning = str(row['interpretation']).strip()
+        if re.search(rf'\b{re.escape(symbol)}\b', text_lower):
+            matches.append({"symbol": symbol, "meaning": meaning})
+    return matches
+
+# --- Master Dream Analyzer ---
+
+def analyze_dream(text):
+    summary = summarize_dream(text)
+    emotion = detect_emotion(text)
+    themes = extract_themes(text)
+    symbols = interpret_symbols(text)
+
+    return {
+        "summary": summary,
+        "emotion": emotion,
+        "themes": themes,
+        "symbols": symbols
+    }
