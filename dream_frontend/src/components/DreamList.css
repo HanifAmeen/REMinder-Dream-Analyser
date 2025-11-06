@@ -1,37 +1,47 @@
+/* --- Moon Knight Themed DreamList --- */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
 .dream-list-container {
   margin-top: 40px;
   width: 100%;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Orbitron', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(180deg, #0f0f0f 0%, #1b1b1b 100%);
+  color: #e0e0e0;
+  padding: 20px;
+  border-radius: 12px;
 }
 
 .dream-list-title {
   text-align: center;
-  color: #6a1b9a;
+  color: #b0b0ff;
   font-size: 28px;
   margin-bottom: 20px;
+  text-shadow: 0 0 8px #b0b0ff;
 }
 
 .no-dreams {
   text-align: center;
   font-style: italic;
-  color: #555;
+  color: #888;
 }
 
+/* --- Dream Cards --- */
 .dream-card {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: #262626;
   border-radius: 15px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-  position: relative;
-  transition: transform 0.2s;
+  box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+  transition: transform 0.2s, box-shadow 0.3s;
 }
 
 .dream-card:hover {
   transform: translateY(-3px);
+  box-shadow: 0 0 25px rgba(138, 43, 226, 0.7);
 }
 
 .dream-card-header {
@@ -41,64 +51,15 @@
   font-weight: bold;
   margin-bottom: 8px;
   font-size: 18px;
-  color: #4a148c;
+  color: #b0b0ff;
 }
 
-.delete-button {
-  background-color: #f44336;
-  border: none;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.delete-button:hover {
-  background-color: #d32f2f;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(244, 67, 54, 0.4);
-}
-
-.dream-themes {
-  font-style: italic;
-  margin-bottom: 8px;
-}
-
-.dream-symbols {
-  background: #f0f0f0;
-  padding: 12px;
-  border-radius: 12px;
-  white-space: pre-wrap;
-  margin-top: 10px;
-  font-size: 14px;
-}
-
-/* --- NEW STYLES --- */
-
-/* Recurring motifs section */
-.dream-motifs {
-  background: #e8f5e9;
-  padding: 10px;
-  border-left: 4px solid #43a047;
-  border-radius: 8px;
-  font-style: italic;
-  margin-top: 10px;
-  font-size: 14px;
-  color: #2e7d32;
-}
-
-/* Interpretations / insights container */
-.dream-interpretations {
-  margin-top: 12px;
-}
-
-/* Toggle button for insights */
+/* --- Buttons --- */
+.delete-button,
 .toggle-insights-button {
   background-color: #8e24aa;
   border: none;
-  color: white;
+  color: #fff;
   padding: 6px 12px;
   border-radius: 8px;
   cursor: pointer;
@@ -107,19 +68,71 @@
   transition: all 0.2s;
 }
 
+.delete-button:hover,
 .toggle-insights-button:hover {
   background-color: #6a1b9a;
   transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(138, 43, 226, 0.4);
+  box-shadow: 0 0 10px #b0b0ff;
 }
 
-/* Insights text box */
-.dream-interpretations pre {
-  background: #f3e5f5;
+/* --- Themes & Symbols --- */
+.dream-themes {
+  font-style: italic;
+  margin-bottom: 8px;
+  color: #a8a8ff;
+}
+
+.dream-symbols-box {
+  background: #1f1f2f;
   padding: 12px;
   border-radius: 12px;
-  white-space: pre-wrap;
+  margin-top: 10px;
   font-size: 14px;
-  margin-top: 4px;
-  color: #4a148c;
+  color: #e0e0ff;
+}
+
+.dream-symbols-box ul {
+  padding-left: 18px;
+}
+
+.dream-symbols-box li {
+  margin-bottom: 6px;
+}
+
+/* --- Combined Insights & Interpretations --- */
+.insights-content {
+  background: #1c1c2c;
+  padding: 12px;
+  border-radius: 12px;
+  margin-top: 6px;
+  font-size: 14px;
+  color: #b0b0ff;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.insights-content p {
+  margin-bottom: 6px;
+}
+
+/* --- Motifs --- */
+.dream-motifs {
+  background: #1f1f1f;
+  padding: 10px;
+  border-left: 4px solid #b0b0ff;
+  border-radius: 8px;
+  font-style: italic;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #a0a0ff;
+}
+
+/* Scrollbar for insights */
+.insights-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.insights-content::-webkit-scrollbar-thumb {
+  background-color: #6a1b9a;
+  border-radius: 3px;
 }

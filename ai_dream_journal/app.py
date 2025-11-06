@@ -28,10 +28,10 @@ class Dream(db.Model):
     summary = db.Column(db.Text)
     themes = db.Column(db.Text)
     symbols = db.Column(db.Text)  # JSON string
+    combined_insights = db.Column(db.Text)  # NEW field
 
 # Initialize DB
 with app.app_context():
-    # Ensure DB exists; no automatic deletion to avoid Windows file lock issues
     db.create_all()
 
 # --- Routes ---
@@ -49,7 +49,6 @@ def add_dream():
     if not title or not content:
         return jsonify({"error": "Title and content are required"}), 400
 
-    # --- Fetch previous dreams for context if needed ---
     previous_dreams = [d.content for d in Dream.query.all()]
 
     # --- AI analysis ---
@@ -60,12 +59,14 @@ def add_dream():
         dominant_emotion = emotions.get("dominant", mood)
         themes = ", ".join(analysis.get("themes", []))
         symbols = analysis.get("symbols", [])
+        combined_insights = analysis.get("combined_insights", [])
     except Exception as e:
         print("AI analysis failed:", e)
         summary = ""
         dominant_emotion = mood
         themes = ""
         symbols = []
+        combined_insights = []
 
     # --- Save dream ---
     new_dream = Dream(
@@ -74,13 +75,21 @@ def add_dream():
         mood=dominant_emotion,
         summary=summary,
         themes=themes,
-        symbols=json.dumps(symbols)
+        symbols=json.dumps(symbols),
+        combined_insights=json.dumps(combined_insights)
     )
     db.session.add(new_dream)
     db.session.commit()
-    print("Dream saved with symbols:", symbols)
+    print("Dream saved with combined insights:", combined_insights)
 
-    return jsonify({"message": "Dream added successfully"}), 201
+    return jsonify({
+        "message": "Dream added successfully",
+        "summary": summary,
+        "emotions": emotions,
+        "themes": themes,
+        "symbols": symbols,
+        "combined_insights": combined_insights
+    }), 201
 
 @app.route('/get_dreams', methods=['GET'])
 def get_dreams():
@@ -90,9 +99,11 @@ def get_dreams():
     for d in dreams:
         try:
             symbols = json.loads(d.symbols) if d.symbols else []
+            combined_insights = json.loads(d.combined_insights) if d.combined_insights else []
         except Exception as e:
-            print("Error loading symbols:", e)
+            print("Error loading dream data:", e)
             symbols = []
+            combined_insights = []
 
         result.append({
             "id": d.id,
@@ -102,6 +113,7 @@ def get_dreams():
             "themes": d.themes,
             "summary": d.summary,
             "symbols": symbols,
+            "combined_insights": combined_insights,
             "date": d.date.strftime("%Y-%m-%d %H:%M:%S")
         })
 
@@ -115,5 +127,4 @@ def delete_dream(id):
     return jsonify({"message": "Dream deleted successfully"})
 
 if __name__ == '__main__':
-    # Flask app ready to run without deleting DB automatically
     app.run(debug=True)

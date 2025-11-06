@@ -3,6 +3,8 @@ from keybert import KeyBERT
 import pandas as pd
 import re
 import string
+from itertools import combinations
+import random
 
 # --- Load dream dictionary ---
 dict_path = r"C:\Users\amjad\Downloads\Research Papers 2025\Dream Journal\Datasets\cleaned_dream_interpretations.csv"
@@ -53,17 +55,89 @@ def interpret_symbols(text):
 
     return matches
 
+# --- NEW: Smarter Combined Symbol Insight Generator ---
+def generate_combined_insights(symbols, dominant_emotion=None):
+    """
+    Generate Jung/Freud-style symbolic insights for combinations of dream symbols.
+    Optionally uses dominant emotion to bias interpretation.
+    """
+    if not symbols or len(symbols) < 2:
+        return []
+
+    insights = []
+    symbol_pairs = list(combinations(symbols, 2))
+
+    # Jungian and Freudian symbolic interpretations
+    jungian_themes = [
+        "represents the integration of unconscious and conscious aspects of the self",
+        "suggests a process of individuation or personal transformation",
+        "symbolizes the confrontation between inner conflict and outer reality",
+        "points to the merging of instinctual drives with higher awareness",
+        "reflects tension between control and surrender",
+    ]
+
+    freudian_themes = [
+        "indicates repressed desires surfacing through symbolic imagery",
+        "relates to unresolved childhood emotions being projected",
+        "hints at internal struggle between id and superego impulses",
+        "reveals transformation of anxiety into symbolic meaning",
+        "may represent displaced emotional energy seeking release",
+    ]
+
+    for s1, s2 in symbol_pairs:
+        sym1, sym2 = s1["symbol"], s2["symbol"]
+        meaning1, meaning2 = s1["meaning"], s2["meaning"]
+
+        # Base interpretive frame
+        base_line = (
+            f"Dreaming of **{sym1}** and **{sym2}** together unites the themes of "
+            f"'{meaning1[:80].lower()}...' and '{meaning2[:80].lower()}...'. "
+        )
+
+        # Bias selection based on dominant emotion (optional)
+        if dominant_emotion:
+            # Simple heuristic: 'fear', 'anger' → Freudian, else Jungian
+            if dominant_emotion.lower() in ['fear', 'anger', 'disgust', 'sadness']:
+                layer = random.choice(freudian_themes)
+                school = "Freudian"
+            else:
+                layer = random.choice(jungian_themes)
+                school = "Jungian"
+        else:
+            if random.random() > 0.5:
+                layer = random.choice(jungian_themes)
+                school = "Jungian"
+            else:
+                layer = random.choice(freudian_themes)
+                school = "Freudian"
+
+        insight = (
+            f"{base_line} From a {school} perspective, this {layer}, "
+            f"suggesting these symbols interact as mirrors of your inner state."
+        )
+
+        insights.append({
+            "symbols": [sym1, sym2],
+            "insight": insight
+        })
+
+    return insights
+
 # --- Master Dream Analyzer ---
 def analyze_dream(text, previous_dreams=None):
-    """Analyze a dream: summary, emotion, themes, symbols."""
+    """
+    Analyze a dream: summary, emotion, themes, symbols, and combined symbolic insights.
+    """
     summary = summarize_dream(text)
     emotion = detect_emotion(text)
     themes = extract_themes(text)
     symbols = interpret_symbols(text)
+    combined_insights = generate_combined_insights(symbols, dominant_emotion=emotion)
 
     return {
         "summary": summary,
         "emotions": {"dominant": emotion},
         "themes": themes,
-        "symbols": symbols
+        "symbols": symbols,
+        "combined_insights": combined_insights
     }

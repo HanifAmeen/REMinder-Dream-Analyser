@@ -21,6 +21,7 @@ function DreamList({ dreams, onDelete }) {
 
       {dreams.map((dream) => (
         <div key={dream.id} className="dream-card">
+          {/* Header */}
           <div className="dream-card-header">
             <strong>{dream.title}</strong> ({dream.date})
             <button className="delete-button" onClick={() => onDelete(dream.id)}>
@@ -28,24 +29,61 @@ function DreamList({ dreams, onDelete }) {
             </button>
           </div>
 
-          <p><strong>Mood:</strong> {dream.mood || "N/A"}</p>
+          {/* Mood */}
+          <p>
+            <strong>Mood:</strong> {dream.mood || "N/A"}
+          </p>
 
+          {/* Themes */}
           {dream.themes && (
-            <p className="dream-themes"><strong>Themes:</strong> {dream.themes}</p>
+            <p className="dream-themes">
+              <strong>Themes:</strong> {dream.themes}
+            </p>
           )}
 
+          {/* Content */}
           <p>{dream.content}</p>
 
           {/* Symbols */}
-          <pre className="dream-symbols">
-            {dream.symbols && dream.symbols.length > 0
-              ? `🔮 Symbols found in dream:\n${dream.symbols
-                  .map((s) => `🜂 ${capitalize(s.symbol)} → ${s.meaning}`)
-                  .join("\n")}\n\n✅ Total symbols matched: ${dream.symbols.length}`
-              : "No dream symbols detected."}
-          </pre>
+          {dream.symbols && dream.symbols.length > 0 && (
+            <div className="dream-symbols-box">
+              <strong>🔮 Symbols found in dream:</strong>
+              <ul>
+                {dream.symbols.map((s, idx) => (
+                  <li key={idx}>
+                    🜂 {capitalize(s.symbol)} → {s.meaning}
+                  </li>
+                ))}
+              </ul>
+              <p>✅ Total symbols matched: {dream.symbols.length}</p>
+            </div>
+          )}
 
-          {/* Motifs */}
+          {/* Combined Symbol Insights */}
+          {dream.combined_insights && dream.combined_insights.length > 0 && (
+            <div className="dream-combined-insights">
+              <button
+                className="toggle-insights-button"
+                onClick={() => toggleInsights(`combined-${dream.id}`)}
+              >
+                {showInsightsMap[`combined-${dream.id}`]
+                  ? "Hide Combined Insights"
+                  : "Show Combined Insights"}
+              </button>
+
+              {showInsightsMap[`combined-${dream.id}`] && (
+                <div className="insights-content">
+                  {dream.combined_insights.map((ci, idx) => (
+                    <p key={idx}>
+                      💭 {capitalize(ci.symbols.join(" + "))}: {ci.insight}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recurring Motifs */}
           {dream.motifs && dream.motifs.length > 0 && (
             <p className="dream-motifs">
               🔁 Recurring Motifs: {dream.motifs.map((m) => capitalize(m)).join(", ")}
@@ -61,12 +99,15 @@ function DreamList({ dreams, onDelete }) {
               >
                 {showInsightsMap[dream.id] ? "Hide Insights" : "Show Insights"}
               </button>
+
               {showInsightsMap[dream.id] && (
-                <pre>
-                  {dream.interpretations
-                    .map((i) => `💡 ${capitalize(i.symbol)} → ${i.meaning}`)
-                    .join("\n")}
-                </pre>
+                <div className="insights-content">
+                  {dream.interpretations.map((i, idx) => (
+                    <p key={idx}>
+                      💡 {capitalize(i.symbol)} → {i.meaning}
+                    </p>
+                  ))}
+                </div>
               )}
             </div>
           )}
