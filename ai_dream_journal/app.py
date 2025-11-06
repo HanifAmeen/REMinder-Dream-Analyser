@@ -5,11 +5,8 @@ from datetime import datetime
 import os
 import json
 
-# AI analysis utilities
-from utils.analyzer import summarize_dream, detect_emotion, extract_themes
-
-# Dream dictionary
-from dream_dictionary import interpret_dream_text, dream_dict_df
+# --- AI analysis utilities ---
+from utils.analyzer import analyze_dream
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -34,6 +31,7 @@ class Dream(db.Model):
 
 # Initialize DB
 with app.app_context():
+    # Ensure DB exists; no automatic deletion to avoid Windows file lock issues
     db.create_all()
 
 # --- Routes ---
@@ -51,38 +49,36 @@ def add_dream():
     if not title or not content:
         return jsonify({"error": "Title and content are required"}), 400
 
+    # --- Fetch previous dreams for context if needed ---
+    previous_dreams = [d.content for d in Dream.query.all()]
+
     # --- AI analysis ---
     try:
-        summary = summarize_dream(content)
-        ai_mood = detect_emotion(content)
-        themes = ", ".join(extract_themes(content))
+        analysis = analyze_dream(content, previous_dreams=previous_dreams)
+        summary = analysis.get("summary", "")
+        emotions = analysis.get("emotions", {})
+        dominant_emotion = emotions.get("dominant", mood)
+        themes = ", ".join(analysis.get("themes", []))
+        symbols = analysis.get("symbols", [])
     except Exception as e:
         print("AI analysis failed:", e)
         summary = ""
-        ai_mood = mood
+        dominant_emotion = mood
         themes = ""
-
-    # --- Dream dictionary analysis ---
-    try:
-        symbols_list = interpret_dream_text(content, dream_dict_df)
-        symbols_json = [{"symbol": s['symbol'], "interpretation": s['meaning']} for s in symbols_list]
-        print("Symbols detected for this dream:", symbols_json)
-    except Exception as e:
-        print("Dream dictionary failed:", e)
-        symbols_json = []
+        symbols = []
 
     # --- Save dream ---
     new_dream = Dream(
         title=title,
         content=content,
-        mood=mood or ai_mood,
+        mood=dominant_emotion,
         summary=summary,
         themes=themes,
-        symbols=json.dumps(symbols_json)
+        symbols=json.dumps(symbols)
     )
     db.session.add(new_dream)
     db.session.commit()
-    print("Dream saved with symbols:", symbols_json)
+    print("Dream saved with symbols:", symbols)
 
     return jsonify({"message": "Dream added successfully"}), 201
 
@@ -119,4 +115,5 @@ def delete_dream(id):
     return jsonify({"message": "Dream deleted successfully"})
 
 if __name__ == '__main__':
+    # Flask app ready to run without deleting DB automatically
     app.run(debug=True)

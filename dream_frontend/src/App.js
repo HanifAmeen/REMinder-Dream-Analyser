@@ -9,28 +9,54 @@ function App() {
 
   // Fetch dreams from Flask
   const fetchDreams = async () => {
-    const res = await fetch("http://localhost:5000/get_dreams");
-    const data = await res.json();
-    setDreams(data);
+    try {
+      const res = await fetch("http://127.0.0.1:5000/get_dreams");
+      if (!res.ok) throw new Error("Failed to fetch dreams");
+      const data = await res.json();
+      setDreams(data);
+    } catch (err) {
+      console.error("Error fetching dreams:", err);
+      alert("Error fetching dreams. Make sure the backend is running.");
+    }
   };
 
   // Add dream
-  const addDream = async (dream) => {
-    const res = await fetch("http://localhost:5000/add_dream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dream),
-    });
-    if (res.ok) {
+  const addDream = async ({ title, content, mood }) => {
+    try {
+      const res = await fetch("http://127.0.0.1:5000/add_dream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content, mood }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to save dream");
+      }
+
+      await res.json();
       await fetchDreams();
       scrollToBottom();
+
+    } catch (err) {
+      console.error("Error adding dream:", err);
+      alert(`Error saving dream: ${err.message}`);
+      throw err; // so DreamForm can handle loading/message
     }
   };
 
   // Delete dream
   const deleteDream = async (id) => {
-    await fetch(`http://localhost:5000/delete_dream/${id}`, { method: "DELETE" });
-    await fetchDreams();
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/delete_dream/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete dream");
+      await fetchDreams();
+    } catch (err) {
+      console.error("Error deleting dream:", err);
+      alert(`Error deleting dream: ${err.message}`);
+    }
   };
 
   useEffect(() => {

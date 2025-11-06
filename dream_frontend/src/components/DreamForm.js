@@ -6,18 +6,38 @@ function DreamForm({ onAdd }) {
   const [content, setContent] = useState("");
   const [mood, setMood] = useState("");
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false); // 👈 added loading state
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!title || !content) {
+      setMessage("Title and content are required.");
+      setTimeout(() => setMessage(""), 2000);
+      return;
+    }
+
     setLoading(true);
-    await onAdd({ title, content, mood });
-    setLoading(false);
-    setTitle("");
-    setContent("");
-    setMood("");
-    setMessage("Dream saved!");
-    setTimeout(() => setMessage(""), 2000);
+    setMessage("");
+
+    try {
+      // Call the onAdd function passed from App.js
+      await onAdd({ title, content, mood });
+
+      // Reset form after successful save
+      setTitle("");
+      setContent("");
+      setMood("");
+      setMessage("Dream saved!");
+      setTimeout(() => setMessage(""), 2000);
+
+    } catch (err) {
+      console.error("Error saving dream:", err);
+      setMessage("Error saving dream.");
+      setTimeout(() => setMessage(""), 2000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -49,13 +69,13 @@ function DreamForm({ onAdd }) {
         <button
           type="submit"
           className="dream-button"
-          disabled={loading} // 👈 disables while saving
+          disabled={loading}
         >
           {loading ? "Saving..." : "Save Dream"}
         </button>
       </form>
 
-      {loading && <div className="loader"></div>} {/* 👈 new spinner */}
+      {loading && <div className="loader"></div>}
 
       {message && <p className="dream-message">{message}</p>}
     </div>
