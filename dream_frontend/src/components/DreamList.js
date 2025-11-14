@@ -2,15 +2,18 @@ import React, { useState } from "react";
 import "./DreamList.css";
 
 function DreamList({ dreams, onDelete }) {
-  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+  const capitalize = (str) =>
+    str && typeof str === "string"
+      ? str.charAt(0).toUpperCase() + str.slice(1)
+      : str;
 
-  // Track which dream's insights are expanded
   const [showInsightsMap, setShowInsightsMap] = useState({});
+  const [showSymbolsMap, setShowSymbolsMap] = useState({});
 
-  const toggleInsights = (id) => {
-    setShowInsightsMap((prev) => ({
+  const toggleSection = (mapSetter, key) => {
+    mapSetter((prev) => ({
       ...prev,
-      [id]: !prev[id],
+      [key]: !prev[key],
     }));
   };
 
@@ -23,90 +26,112 @@ function DreamList({ dreams, onDelete }) {
         <div key={dream.id} className="dream-card">
           {/* Header */}
           <div className="dream-card-header">
-            <strong>{dream.title}</strong> ({dream.date})
+            <strong>{dream.title || "Untitled Dream"}</strong> ({dream.date})
             <button className="delete-button" onClick={() => onDelete(dream.id)}>
               Delete
             </button>
           </div>
 
-          {/* Mood */}
-          <p>
-            <strong>Mood:</strong> {dream.mood || "N/A"}
-          </p>
+          {/* Summary */}
+          {dream.summary && (
+            <p className="dream-summary">
+              <strong>🪶 Summary:</strong> {dream.summary}
+            </p>
+          )}
+
+          {/* Mood / Emotion */}
+          {dream.emotions && (
+            <p>
+              <strong>Dominant Emotion:</strong>{" "}
+              {capitalize(dream.emotions.dominant) || dream.mood || "N/A"}
+            </p>
+          )}
+
+          {/* Archetype */}
+          {dream.archetype && (
+            <p>
+              <strong>Archetype:</strong> {capitalize(dream.archetype)}
+            </p>
+          )}
+
+          {/* Coherence Score */}
+          {dream.coherence_score && (
+            <p>
+              <strong>Coherence Score:</strong> {dream.coherence_score}%
+            </p>
+          )}
 
           {/* Themes */}
-          {dream.themes && (
+          {dream.themes && dream.themes.length > 0 && (
             <p className="dream-themes">
-              <strong>Themes:</strong> {dream.themes}
+              <strong>Themes:</strong>{" "}
+              {Array.isArray(dream.themes)
+                ? dream.themes.join(", ")
+                : dream.themes}
+            </p>
+          )}
+
+          {/* Recurring Symbols */}
+          {dream.recurring_symbols && dream.recurring_symbols.length > 0 && (
+            <p className="dream-recurring">
+              🔁 <strong>Recurring Symbols:</strong>{" "}
+              {dream.recurring_symbols.map(capitalize).join(", ")}
             </p>
           )}
 
           {/* Content */}
-          <p>{dream.content}</p>
-
-          {/* Symbols */}
-          {dream.symbols && dream.symbols.length > 0 && (
-            <div className="dream-symbols-box">
-              <strong>🔮 Symbols found in dream:</strong>
-              <ul>
-                {dream.symbols.map((s, idx) => (
-                  <li key={idx}>
-                    🜂 {capitalize(s.symbol)} → {s.meaning}
-                  </li>
-                ))}
-              </ul>
-              <p>✅ Total symbols matched: {dream.symbols.length}</p>
-            </div>
+          {dream.content && (
+            <p className="dream-content">
+              <strong>Dream Content:</strong> {dream.content}
+            </p>
           )}
 
-          {/* Combined Symbol Insights */}
-          {dream.combined_insights && dream.combined_insights.length > 0 && (
-            <div className="dream-combined-insights">
+          {/* SYMBOLS DROPDOWN */}
+          {dream.symbols && dream.symbols.length > 0 && (
+            <div className="dream-symbols-section">
               <button
                 className="toggle-insights-button"
-                onClick={() => toggleInsights(`combined-${dream.id}`)}
+                onClick={() => toggleSection(setShowSymbolsMap, `symbols-${dream.id}`)}
               >
-                {showInsightsMap[`combined-${dream.id}`]
-                  ? "Hide Combined Insights"
-                  : "Show Combined Insights"}
+                {showSymbolsMap[`symbols-${dream.id}`]
+                  ? "Hide Symbols"
+                  : "Show Symbols Detected"}
               </button>
 
-              {showInsightsMap[`combined-${dream.id}`] && (
-                <div className="insights-content">
-                  {dream.combined_insights.map((ci, idx) => (
-                    <p key={idx}>
-                      💭 {capitalize(ci.symbols.join(" + "))}: {ci.insight}
-                    </p>
-                  ))}
+              {showSymbolsMap[`symbols-${dream.id}`] && (
+                <div className="dream-symbols-box">
+                  <ul>
+                    {dream.symbols.map((s, idx) => (
+                      <li key={idx}>
+                        🜂 <strong>{capitalize(s.symbol)}</strong> → {s.meaning}
+                      </li>
+                    ))}
+                  </ul>
+                  <p>✅ Total symbols matched: {dream.symbols.length}</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Recurring Motifs */}
-          {dream.motifs && dream.motifs.length > 0 && (
-            <p className="dream-motifs">
-              🔁 Recurring Motifs: {dream.motifs.map((m) => capitalize(m)).join(", ")}
-            </p>
-          )}
-
-          {/* Interpretations */}
-          {dream.interpretations && dream.interpretations.length > 0 && (
-            <div className="dream-interpretations">
+          {/* HOLISTIC INSIGHT DROPDOWN */}
+          {dream.combined_insights && dream.combined_insights.length > 0 && (
+            <div className="dream-combined-insights">
               <button
                 className="toggle-insights-button"
-                onClick={() => toggleInsights(dream.id)}
+                onClick={() => toggleSection(setShowInsightsMap, `insight-${dream.id}`)}
               >
-                {showInsightsMap[dream.id] ? "Hide Insights" : "Show Insights"}
+                {showInsightsMap[`insight-${dream.id}`]
+                  ? "Hide Dream Insight"
+                  : "Show Overall Symbol Insight"}
               </button>
 
-              {showInsightsMap[dream.id] && (
+              {showInsightsMap[`insight-${dream.id}`] && (
                 <div className="insights-content">
-                  {dream.interpretations.map((i, idx) => (
-                    <p key={idx}>
-                      💡 {capitalize(i.symbol)} → {i.meaning}
-                    </p>
-                  ))}
+                  {/* Only show one holistic insight */}
+                  <p>
+                    💭 <strong>Holistic Interpretation:</strong>{" "}
+                    {dream.combined_insights[0].insight}
+                  </p>
                 </div>
               )}
             </div>

@@ -10,7 +10,6 @@ import traceback
 # --- Load dream dictionary ---
 dict_path = r"C:\Users\amjad\Downloads\Research Papers 2025\Dream Journal\Datasets\cleaned_dream_interpretations.csv"
 dream_dict_df = pd.read_csv(dict_path)
-# drop unnamed columns, normalize column names
 dream_dict_df = dream_dict_df.loc[:, ~dream_dict_df.columns.str.contains('^Unnamed|^$', case=False)]
 dream_dict_df.columns = [c.strip().lower() for c in dream_dict_df.columns]
 
@@ -41,21 +40,21 @@ except Exception as e:
 # Helper utilities
 # -------------------------
 def safe_first_sentence(text):
-    """Return the first complete sentence from text, or a cleaned truncated fallback.
-       Ensures we don't cut mid-word and returns a readable short phrase.
-    """
+    """Return the first complete sentence from text, or a cleaned truncated fallback."""
     if not text:
         return ""
-    t = " ".join(str(text).split())  # normalize whitespace
-    # Try capture first sentence with punctuation
-    m = re.search(r'(.+?[\.!?])\s', t + " ")  # add space to ensure match
+    # Replace newlines with spaces, trim
+    t = " ".join(text.split())
+    # Find sentence-ending punctuation
+    m = re.search(r'([^.?!]*[.?!])', t)
     if m:
-        return m.group(1).strip()
-    # if no clear punctuation, try up to 220 chars but don't cut words
-    if len(t) <= 220:
+        return m.group(0).strip()
+    # fallback: return up to 200 chars without breaking words
+    if len(t) <= 200:
         return t
     else:
-        part = t[:220]
+        part = t[:200]
+        # don't cut in the middle of a word
         return re.sub(r'\s+\S+$', '', part).strip() + "..."
 
 # -------------------------
@@ -66,23 +65,25 @@ def summarize_dream(text):
     try:
         if summarizer is None:
             raise RuntimeError("summarizer not available")
-        summary = summarizer(text, max_length=60, min_length=15, do_sample=False)
+        summary = summarizer(text, max_length=60, min_length=20, do_sample=False)
         return summary[0]['summary_text']
     except Exception as e:
         print("[analyzer] summarize_dream error:", e)
-        clean = " ".join(str(text).strip().split())
-        return (clean[:140] + ("..." if len(clean) > 140 else ""))
+        # fallback: return first 120 chars (clean)
+        clean = " ".join(text.strip().split())
+        return (clean[:120] + ("..." if len(clean) > 120 else ""))
 
 def detect_emotion(text):
     """Detect dominant emotion from dream text; returns dict with dominant and scores."""
     try:
         if emotion_classifier is None:
             raise RuntimeError("emotion_classifier not available")
-        results = emotion_classifier(text)[0]  # pipeline returns list-of-lists
+        results = emotion_classifier(text)[0]
         top_emotion = max(results, key=lambda x: x.get('score', 0))
         return {"dominant": top_emotion['label'], "scores": results}
     except Exception as e:
         print("[analyzer] detect_emotion error:", e)
+        # fallback: neutral structure
         return {"dominant": "neutral", "scores": []}
 
 def extract_themes(text):
@@ -94,7 +95,8 @@ def extract_themes(text):
         return [kw[0] for kw in keywords]
     except Exception as e:
         print("[analyzer] extract_themes error:", e)
-        words = re.findall(r'\b[a-z]{4,}\b', str(text).lower())
+        # fallback: simple heuristic using common words (very light)
+        words = re.findall(r'\b[a-z]{4,}\b', text.lower())
         freq = {}
         for w in words:
             freq[w] = freq.get(w, 0) + 1
@@ -110,22 +112,19 @@ def interpret_symbols(text):
     """
     try:
         matches = []
-        # remove punctuation but keep hyphens (some entries might contain hyphenated symbols)
+        # lowercase and remove punctuation except keep internal hyphens (common in some symbols)
         translator = str.maketrans('', '', string.punctuation.replace('-', ''))
-        text_clean = str(text).lower().translate(translator)
-        # iterate dictionary rows defensively
+        text_clean = text.lower().translate(translator)
+        # iterate dictionary
         for _, row in dream_dict_df.iterrows():
             symbol = str(row.get('word', '')).lower().strip()
             meaning_raw = str(row.get('interpretation', '')).strip()
             if not symbol:
                 continue
-            # boundary match to avoid partial matches (e.g., 'day' inside 'yesterday')
+            # boundary match to avoid partial matches (e.g., 'day' in 'yesterday')
             pattern = r'\b' + re.escape(symbol) + r'\b'
             if re.search(pattern, text_clean):
                 meaning_short = safe_first_sentence(meaning_raw)
-                # if nothing found use full cleaned meaning_raw
-                if not meaning_short and meaning_raw:
-                    meaning_short = " ".join(meaning_raw.split())[:220] + ("..." if len(meaning_raw) > 220 else "")
                 matches.append({"symbol": symbol, "meaning": meaning_short})
         return matches
     except Exception as e:
@@ -139,14 +138,14 @@ def interpret_symbols(text):
 def rank_symbols_by_context(text, symbols):
     """Weight dream symbols based on whole-word frequency and emotional proximity."""
     try:
-        text_lower = str(text).lower()
+        text_lower = text.lower()
         ranked = []
         for s in symbols:
             sym = s.get("symbol", "")
             # count whole-word occurrences
             count = len(re.findall(rf'\b{re.escape(sym)}\b', text_lower))
             score = count
-            # proximity heuristic: if emotion words near symbol, boost weight
+            # proximity heuristic: if emotion words nearby, boost weight
             if re.search(rf"(fear|love|death|pain|joy|anger|sad|happy).*?{re.escape(sym)}", text_lower) or \
                re.search(rf"{re.escape(sym)}.*?(fear|love|death|pain|joy|anger|sad|happy)", text_lower):
                 score += 2
@@ -226,24 +225,17 @@ def generate_combined_insights_unified(symbols, dominant_emotion=None):
         if not symbols:
             return []
 
-        # Use top N weighted symbols (assumes symbols may already be ranked)
-        top_n = 8
-        top_symbols = [s["symbol"] for s in symbols[:top_n]]
-        short_meanings = [s.get("meaning", "") for s in symbols[:top_n]]
+        # Use top N weighted symbols (already ranked if you call with ranked list)
+        top_symbols = [s["symbol"] for s in symbols[:8]]  # limit to 8 to keep paragraph focused
+        # Gather short meanings (first-sentence) and build a small context sentence list
+        short_meanings = [s.get("meaning", "") for s in symbols[:8]]
 
-        # Build a clean meanings string; ensure sentences end cleanly
-        meanings_clean_parts = []
-        for m in short_meanings:
-            if not m:
-                continue
-            m = m.strip()
-            if not m.endswith(('.', '?', '!')):
-                m = m.rstrip('. ') + "."
-            meanings_clean_parts.append(m)
-        meanings_joined = " ".join(meanings_clean_parts)
+        # Compose combined narrative ensuring no truncation of words
+        title_part = " + ".join(top_symbols)
+        meanings_joined = " ".join([m if m.endswith(('.', '?', '!')) else m + "." for m in short_meanings])
         meanings_joined = re.sub(r'\s+', ' ', meanings_joined).strip()
 
-        # Choose interpretive style based on emotion
+        # Choose interpretive style
         mood = (dominant_emotion or "").lower()
         if mood in ['fear', 'anger', 'disgust', 'sadness']:
             school = "Freudian"
@@ -252,12 +244,16 @@ def generate_combined_insights_unified(symbols, dominant_emotion=None):
             school = "Jungian"
             framing = "This pattern suggests deeper archetypal or individuation processes."
 
-        # Compose three-sentence holistic paragraph
-        sentence1 = f"You dreamed of {', '.join(top_symbols)} — symbols appearing together in this scene."
-        sentence2 = f"In context: {meanings_joined} From a {school} perspective, {framing.lower()}"
+        # Build the paragraph: 3 sentences (context, interpretation, suggestion)
+        sentence1 = f"You dreamed of {', '.join(top_symbols)} — symbols that appear together in this scene."
+        sentence2 = (
+            f"In context: {meanings_joined} From a {school} perspective, {framing.lower()}"
+        )
+        # Practical suggestion (actionable, not prescriptive)
         sentence3 = "Consider reflecting on which of these symbols best maps to an active concern in your waking life — that link often points to where change or attention is needed."
 
         insight_text = " ".join([sentence1, sentence2, sentence3])
+        # Clean whitespace
         insight_text = re.sub(r'\s+', ' ', insight_text).strip()
 
         return [{"symbols": top_symbols, "insight": insight_text}]
@@ -282,7 +278,7 @@ def analyze_dream(text, previous_dreams=None):
         "recurring_symbols": []
     }
 
-    if not text or not str(text).strip():
+    if not text or not text.strip():
         return result
 
     try:
@@ -309,7 +305,7 @@ def analyze_dream(text, previous_dreams=None):
         result["symbols"] = []
 
     try:
-        # Rank symbols by context (adds 'weight' field)
+        # Rank symbols by context (adds weight field)
         result["symbols"] = rank_symbols_by_context(text, result["symbols"])
     except Exception as e:
         print("[analyzer] rank_symbols_by_context fallback:", e)
