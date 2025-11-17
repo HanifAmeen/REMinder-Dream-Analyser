@@ -5,21 +5,43 @@ from datetime import datetime
 import os
 import json
 import traceback
+import jwt
+import bcrypt
+from functools import wraps
 
 # --- AI analysis utilities ---
 from utils.analyzer import analyze_dream
 
-# Initialize Flask app
+# ---------------------------------------
+# CONFIG
+# ---------------------------------------
+SECRET_KEY = "supersecretkey123"   # Change later!
+
 app = Flask(__name__)
 CORS(app)
 
-# --- Database setup ---
+# Database setup
 db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dreams.db")
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 
-# --- Dream model ---
+
+# ---------------------------------------
+# USER MODEL
+# ---------------------------------------
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ---------------------------------------
+# DREAM MODEL
+# ---------------------------------------
 class Dream(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200))
@@ -27,20 +49,99 @@ class Dream(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow)
     mood = db.Column(db.String(50))
     summary = db.Column(db.Text)
-    themes = db.Column(db.Text)  # JSON string
-    symbols = db.Column(db.Text)  # JSON string
-    combined_insights = db.Column(db.Text)  # JSON string
+    themes = db.Column(db.Text)
+    symbols = db.Column(db.Text)
+    combined_insights = db.Column(db.Text)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-# Initialize DB (no automatic deletion)
+
+# Create database
 with app.app_context():
     db.create_all()
 
-# --- Routes ---
-@app.route('/')
-def index():
-    return render_template('index.html')
 
+# ---------------------------------------
+# AUTH DECORATOR (NOT ENABLED YET)
+# ---------------------------------------
+def require_auth(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+
+        # TEMPORARY BYPASS FOR DEVELOPMENT
+        request.user_id = 1
+        return f(*args, **kwargs)
+
+        """
+        # REAL AUTH (ENABLE LATER)
+        token = request.headers.get("Authorization")
+        if not token:
+            return jsonify({"error": "Missing token"}), 401
+
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            request.user_id = data["user_id"]
+        except Exception:
+            return jsonify({"error": "Invalid or expired token"}), 401
+        return f(*args, **kwargs)
+        """
+
+    return wrapper
+
+
+# ---------------------------------------
+# AUTH ROUTES (Not required for now)
+# ---------------------------------------
+@app.route('/signup', methods=['POST'])
+def signup():
+    data = request.get_json() or {}
+
+    email = data.get("email", "").strip().lower()
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+
+    if not email or not username or not password:
+        return jsonify({"error": "All fields required"}), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({"error": "Email already exists"}), 400
+
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+    new_user = User(email=email, username=username, password_hash=hashed)
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({"message": "User created successfully"})
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json() or {}
+
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    token = jwt.encode(
+        {"user_id": user.id},
+        SECRET_KEY,
+        algorithm="HS256"
+    )
+
+    return jsonify({"token": token})
+
+
+# ---------------------------------------
+# ROUTES — TEMPORARILY USING user_id=1
+# ---------------------------------------
 @app.route('/add_dream', methods=['POST'])
+@require_auth
 def add_dream():
     data = request.get_json() or {}
     title = data.get('title')
@@ -50,40 +151,37 @@ def add_dream():
     if not title or not content:
         return jsonify({"error": "Title and content are required"}), 400
 
-    # Build previous_dreams as list of dicts with symbols parsed for compare_with_previous
+    # Get only this user's previous dreams
     previous_dreams = []
     try:
-        all_dreams = Dream.query.order_by(Dream.date.desc()).all()
+        all_dreams = Dream.query.filter_by(user_id=request.user_id).order_by(Dream.date.desc()).all()
         for d in all_dreams:
             try:
                 prev_symbols = json.loads(d.symbols) if d.symbols else []
-            except Exception:
+            except:
                 prev_symbols = []
             previous_dreams.append({
                 "content": d.content,
                 "symbols": prev_symbols
             })
-    except Exception as e:
-        print("[app] error loading previous dreams:", e)
+    except:
         previous_dreams = []
 
-    # --- AI analysis ---
+    # Analyze dream
     try:
         analysis = analyze_dream(content, previous_dreams=previous_dreams) or {}
     except Exception as e:
-        print("[app] analyze_dream raised exception:", e)
         traceback.print_exc()
         analysis = {}
 
-    # Ensure typed defaults (avoid storing wrong types)
-    summary = analysis.get("summary", "") or ""
-    emotions = analysis.get("emotions", {}) or {}
-    dominant_emotion = emotions.get("dominant", mood_input) or mood_input or ""
-    themes_list = analysis.get("themes", []) or []
-    symbols_list = analysis.get("symbols", []) or []
-    combined_insights_list = analysis.get("combined_insights", []) or []
+    summary = analysis.get("summary", "")
+    emotions = analysis.get("emotions", {})
+    dominant_emotion = emotions.get("dominant", mood_input)
+    themes_list = analysis.get("themes", [])
+    symbols_list = analysis.get("symbols", [])
+    combined_insights = analysis.get("combined_insights", [])
 
-    # --- Save dream (store JSON strings for arrays) ---
+    # Save dream
     try:
         new_dream = Dream(
             title=title,
@@ -92,50 +190,38 @@ def add_dream():
             summary=summary,
             themes=json.dumps(themes_list),
             symbols=json.dumps(symbols_list),
-            combined_insights=json.dumps(combined_insights_list)
+            combined_insights=json.dumps(combined_insights),
+            user_id=request.user_id  # TEMPORARY FIX
         )
         db.session.add(new_dream)
         db.session.commit()
     except Exception as e:
-        print("[app] error saving dream:", e)
         traceback.print_exc()
         return jsonify({"error": "Failed to save dream"}), 500
 
-    # Return analysis back to frontend for immediate display
     return jsonify({
         "message": "Dream added successfully",
         "summary": summary,
         "emotions": emotions,
         "themes": themes_list,
         "symbols": symbols_list,
-        "combined_insights": combined_insights_list
-    }), 201
+        "combined_insights": combined_insights
+    })
+
 
 @app.route('/get_dreams', methods=['GET'])
+@require_auth
 def get_dreams():
-    try:
-        dreams = Dream.query.order_by(Dream.date.desc()).all()
-    except Exception as e:
-        print("[app] error querying dreams:", e)
-        return jsonify([])
+    dreams = Dream.query.filter_by(user_id=request.user_id).order_by(Dream.date.desc()).all()
 
     result = []
     for d in dreams:
         try:
             symbols = json.loads(d.symbols) if d.symbols else []
-        except Exception as e:
-            print("[app] error loading symbols JSON:", e)
-            symbols = []
-        try:
             combined_insights = json.loads(d.combined_insights) if d.combined_insights else []
-        except Exception as e:
-            print("[app] error loading combined_insights JSON:", e)
-            combined_insights = []
-        try:
             themes = json.loads(d.themes) if d.themes else []
-        except Exception as e:
-            print("[app] error loading themes JSON:", e)
-            themes = []
+        except:
+            symbols, combined_insights, themes = [], [], []
 
         result.append({
             "id": d.id,
@@ -151,17 +237,18 @@ def get_dreams():
 
     return jsonify(result)
 
+
 @app.route('/delete_dream/<int:id>', methods=['DELETE'])
+@require_auth
 def delete_dream(id):
-    try:
-        dream = Dream.query.get_or_404(id)
-        db.session.delete(dream)
-        db.session.commit()
-        return jsonify({"message": "Dream deleted successfully"})
-    except Exception as e:
-        print("[app] delete error:", e)
-        return jsonify({"error": "Delete failed"}), 500
+    dream = Dream.query.get_or_404(id)
+    if dream.user_id != request.user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    db.session.delete(dream)
+    db.session.commit()
+    return jsonify({"message": "Dream deleted successfully"})
+
 
 if __name__ == '__main__':
-    # threaded=True helps handle requests while heavy model loads occur
     app.run(debug=True, threaded=True)

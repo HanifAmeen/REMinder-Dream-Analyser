@@ -69,3 +69,21 @@
 .dream-list-wrapper::-webkit-scrollbar-thumb:hover {
   background: #8e24aa;
 }
+
+.logout-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: #ff4c4c;
+  border: none;
+  padding: 8px 14px;
+  color: white;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.logout-btn:hover {
+  background: #ff6b6b;
+}

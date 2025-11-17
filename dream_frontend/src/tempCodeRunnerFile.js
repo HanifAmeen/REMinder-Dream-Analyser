@@ -1,21 +1,13 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
-
 import DreamForm from "./components/DreamForm";
 import DreamList from "./components/DreamList";
-
-import Login from "./components/Login_and_registration/login";
-import Signup from "./components/Login_and_registration/Signup";
-import ProtectedRoute from "./components/ProtectedRoute";   // ← ADD THIS
-
 import "./App.css";
 
 function App() {
   const [dreams, setDreams] = useState([]);
   const listRef = useRef(null);
-  const navigate = useNavigate();
 
-  // Fetch all dreams
+  // Fetch dreams from Flask
   const fetchDreams = async () => {
     try {
       const res = await fetch("http://127.0.0.1:5000/get_dreams");
@@ -45,10 +37,11 @@ function App() {
       await res.json();
       await fetchDreams();
       scrollToBottom();
+
     } catch (err) {
       console.error("Error adding dream:", err);
       alert(`Error saving dream: ${err.message}`);
-      throw err;
+      throw err; // so DreamForm can handle loading/message
     }
   };
 
@@ -76,52 +69,17 @@ function App() {
     }
   };
 
-  const handleLogout = () =>{
-    localStorage.removeItem("token");
-    navigate("/login")
-  }
-
   return (
- 
-    <div className="app-wrapper">
-        
-      <Routes>
-    
-
-        {/* LOGIN PAGE */}
-        <Route
-          path="/login"
-          element={<Login onLogin={() => navigate("/")} />}
-        />
-
-        {/* SIGNUP PAGE */}
-        <Route path="/signup" element={<Signup />} />
-
-        {/* PROTECTED MAIN DREAM JOURNAL UI */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <div className="dream-journal-page">
-                  <button className="logout-btn" onClick={handleLogout}>Logout</button>
-                <h1 className="dream-page-title">AI Dream Journal</h1>
-                <div className="dream-dashboard">
-
-                  <div className="dream-form-wrapper">
-                    <DreamForm onAdd={addDream} />
-                  </div>
-
-                  <div className="dream-list-wrapper" ref={listRef}>
-                    <DreamList dreams={dreams} onDelete={deleteDream} />
-                  </div>
-
-                </div>
-              </div>
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-
+    <div className="dream-journal-page">
+      <h1 className="dream-page-title">AI Dream Journal</h1>
+      <div className="dream-dashboard">
+        <div className="dream-form-wrapper">
+          <DreamForm onAdd={addDream} />
+        </div>
+        <div className="dream-list-wrapper" ref={listRef}>
+          <DreamList dreams={dreams} onDelete={deleteDream} />
+        </div>
+      </div>
     </div>
   );
 }
