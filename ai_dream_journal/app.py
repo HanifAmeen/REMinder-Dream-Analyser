@@ -1,13 +1,13 @@
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from datetime import datetime
-import os
-import json
-import traceback
+from datetime import datetime, timedelta
 import jwt
 import bcrypt
 from functools import wraps
+import traceback
+import json
+import os
 
 # --- AI analysis utilities ---
 from utils.analyzer import analyze_dream
@@ -15,7 +15,7 @@ from utils.analyzer import analyze_dream
 # ---------------------------------------
 # CONFIG
 # ---------------------------------------
-SECRET_KEY = "supersecretkey123"   # Change later!
+SECRET_KEY = "CHANGE_THIS_TO_A_RANDOM_SECRET"
 
 app = Flask(__name__)
 CORS(app)
@@ -61,35 +61,49 @@ with app.app_context():
 
 
 # ---------------------------------------
-# AUTH DECORATOR (NOT ENABLED YET)
+# JWT HELPERS
 # ---------------------------------------
-def require_auth(f):
+def make_token(user_id):
+    payload = {
+        "user_id": user_id,
+        "exp": datetime.utcnow() + timedelta(hours=24)
+    }
+    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
+    if isinstance(token, bytes):
+        token = token.decode("utf-8")
+
+    return token
+
+
+def decode_token(token):
+    try:
+        data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        return data["user_id"]
+    except Exception:
+        return None
+
+
+def auth_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-
-        # TEMPORARY BYPASS FOR DEVELOPMENT
-        request.user_id = 1
-        return f(*args, **kwargs)
-
-        """
-        # REAL AUTH (ENABLE LATER)
-        token = request.headers.get("Authorization")
-        if not token:
+        header = request.headers.get("Authorization", "")
+        if not header.startswith("Bearer "):
             return jsonify({"error": "Missing token"}), 401
 
-        try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            request.user_id = data["user_id"]
-        except Exception:
-            return jsonify({"error": "Invalid or expired token"}), 401
-        return f(*args, **kwargs)
-        """
+        token = header.split(" ", 1)[1].strip()
+        user_id = decode_token(token)
 
+        if not user_id:
+            return jsonify({"error": "Invalid or expired token"}), 401
+
+        request.user_id = user_id
+        return f(*args, **kwargs)
     return wrapper
 
 
 # ---------------------------------------
-# AUTH ROUTES (Not required for now)
+# AUTH ROUTES
 # ---------------------------------------
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -105,13 +119,16 @@ def signup():
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Email already exists"}), 400
 
+    if User.query.filter_by(username=username).first():
+        return jsonify({"error": "Username already exists"}), 400
+
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
-    new_user = User(email=email, username=username, password_hash=hashed)
-    db.session.add(new_user)
+    user = User(email=email, username=username, password_hash=hashed)
+    db.session.add(user)
     db.session.commit()
 
-    return jsonify({"message": "User created successfully"})
+    return jsonify({"message": "User created"}), 201
 
 
 @app.route('/login', methods=['POST'])
@@ -128,49 +145,59 @@ def login():
     if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    token = jwt.encode(
-        {"user_id": user.id},
-        SECRET_KEY,
-        algorithm="HS256"
-    )
+    token = make_token(user.id)
 
-    return jsonify({"token": token})
+    return jsonify({
+        "token": token,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username
+        }
+    })
 
 
 # ---------------------------------------
-# ROUTES — TEMPORARILY USING user_id=1
+# PUBLIC ROUTE
+# ---------------------------------------
+@app.route('/')
+def index():
+    return "Dream Journal Backend Running"
+
+
+# ---------------------------------------
+# PROTECTED DREAM ROUTES
 # ---------------------------------------
 @app.route('/add_dream', methods=['POST'])
-@require_auth
+@auth_required
 def add_dream():
     data = request.get_json() or {}
+
     title = data.get('title')
     content = data.get('content')
     mood_input = data.get('mood', '')
 
     if not title or not content:
-        return jsonify({"error": "Title and content are required"}), 400
+        return jsonify({"error": "Title and content required"}), 400
 
-    # Get only this user's previous dreams
+    # Previous dreams only for THIS user
     previous_dreams = []
-    try:
-        all_dreams = Dream.query.filter_by(user_id=request.user_id).order_by(Dream.date.desc()).all()
-        for d in all_dreams:
-            try:
-                prev_symbols = json.loads(d.symbols) if d.symbols else []
-            except:
-                prev_symbols = []
-            previous_dreams.append({
-                "content": d.content,
-                "symbols": prev_symbols
-            })
-    except:
-        previous_dreams = []
+    user_dreams = Dream.query.filter_by(user_id=request.user_id).all()
 
-    # Analyze dream
+    for d in user_dreams:
+        try:
+            prev_symbols = json.loads(d.symbols) if d.symbols else []
+        except:
+            prev_symbols = []
+
+        previous_dreams.append({
+            "content": d.content,
+            "symbols": prev_symbols
+        })
+
     try:
-        analysis = analyze_dream(content, previous_dreams=previous_dreams) or {}
-    except Exception as e:
+        analysis = analyze_dream(content, previous_dreams=previous_dreams)
+    except:
         traceback.print_exc()
         analysis = {}
 
@@ -179,38 +206,34 @@ def add_dream():
     dominant_emotion = emotions.get("dominant", mood_input)
     themes_list = analysis.get("themes", [])
     symbols_list = analysis.get("symbols", [])
-    combined_insights = analysis.get("combined_insights", [])
+    combined_insights_list = analysis.get("combined_insights", [])
 
-    # Save dream
-    try:
-        new_dream = Dream(
-            title=title,
-            content=content,
-            mood=dominant_emotion,
-            summary=summary,
-            themes=json.dumps(themes_list),
-            symbols=json.dumps(symbols_list),
-            combined_insights=json.dumps(combined_insights),
-            user_id=request.user_id  # TEMPORARY FIX
-        )
-        db.session.add(new_dream)
-        db.session.commit()
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": "Failed to save dream"}), 500
+    dream = Dream(
+        title=title,
+        content=content,
+        mood=dominant_emotion,
+        summary=summary,
+        themes=json.dumps(themes_list),
+        symbols=json.dumps(symbols_list),
+        combined_insights=json.dumps(combined_insights_list),
+        user_id=request.user_id
+    )
+
+    db.session.add(dream)
+    db.session.commit()
 
     return jsonify({
-        "message": "Dream added successfully",
+        "message": "Dream saved",
         "summary": summary,
         "emotions": emotions,
         "themes": themes_list,
         "symbols": symbols_list,
-        "combined_insights": combined_insights
+        "combined_insights": combined_insights_list
     })
 
 
 @app.route('/get_dreams', methods=['GET'])
-@require_auth
+@auth_required
 def get_dreams():
     dreams = Dream.query.filter_by(user_id=request.user_id).order_by(Dream.date.desc()).all()
 
@@ -218,20 +241,20 @@ def get_dreams():
     for d in dreams:
         try:
             symbols = json.loads(d.symbols) if d.symbols else []
-            combined_insights = json.loads(d.combined_insights) if d.combined_insights else []
+            insights = json.loads(d.combined_insights) if d.combined_insights else []
             themes = json.loads(d.themes) if d.themes else []
         except:
-            symbols, combined_insights, themes = [], [], []
+            symbols, insights, themes = [], [], []
 
         result.append({
             "id": d.id,
             "title": d.title,
             "content": d.content,
             "mood": d.mood,
-            "themes": themes,
             "summary": d.summary,
+            "themes": themes,
             "symbols": symbols,
-            "combined_insights": combined_insights,
+            "combined_insights": insights,
             "date": d.date.strftime("%Y-%m-%d %H:%M:%S")
         })
 
@@ -239,15 +262,17 @@ def get_dreams():
 
 
 @app.route('/delete_dream/<int:id>', methods=['DELETE'])
-@require_auth
+@auth_required
 def delete_dream(id):
     dream = Dream.query.get_or_404(id)
+
     if dream.user_id != request.user_id:
         return jsonify({"error": "Unauthorized"}), 403
 
     db.session.delete(dream)
     db.session.commit()
-    return jsonify({"message": "Dream deleted successfully"})
+
+    return jsonify({"message": "Dream deleted"})
 
 
 if __name__ == '__main__':

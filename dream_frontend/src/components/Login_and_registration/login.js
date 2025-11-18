@@ -1,35 +1,36 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import "./auth.css";
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const submit = async (e) => {
+  const submitLogin = async (e) => {
     e.preventDefault();
-    try {
-      const res = await fetch("http://127.0.0.1:5000/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Login failed");
+    const res = await fetch("http://127.0.0.1:5000/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-      localStorage.setItem("token", data.token);
-      if (onLogin) onLogin();
-    } catch (err) {
-      alert(err.message);
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Login failed");
+      return;
     }
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    onLogin(); // navigate("/")
   };
 
   return (
     <div className="auth-container">
       <h2>Login</h2>
 
-      <form onSubmit={submit} className="auth-form">
+      <form onSubmit={submitLogin} className="auth-form">
         <input
           type="email"
           placeholder="Email"
@@ -47,9 +48,9 @@ function Login({ onLogin }) {
         <button type="submit">Login</button>
       </form>
 
-      <div className="auth-footer">
-        <p>Don’t have an account? <Link to="/signup">Register</Link></p>
-      </div>
+      <a href="/signup" className="switch-auth-text">
+        Don't have an account? Create one
+      </a>
     </div>
   );
 }
