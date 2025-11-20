@@ -7,47 +7,46 @@ function Signup() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const navigate = useNavigate(); // ← ADD THIS
-
-  const submit = async (e) => {
+  const submitSignup = async (e) => {
     e.preventDefault();
-    try {
-      const res = await fetch("http://127.0.0.1:5000/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password }),
-      });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Signup failed");
+    const res = await fetch("http://127.0.0.1:5000/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, username, password }),
+    });
 
-      alert("Account created! Please log in.");
-      navigate("/login"); // ← REDIRECT AFTER SIGNUP
+    const data = await res.json();
 
-    } catch (err) {
-      alert(err.message);
+    if (!res.ok) {
+      alert(data.error || "Signup failed");
+      return;
     }
+
+    alert("Account created! You can now log in.");
+    window.location.href = "/login";
   };
 
   return (
     <div className="auth-container">
-      <h2>Register</h2>
+      <h2>Signup</h2>
 
-      <form onSubmit={submit} className="auth-form">
+      <form onSubmit={submitSignup} className="auth-form">
+        <p>Email</p>
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-
+         <p>Username</p>
         <input
           type="text"
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
-
+         <p>Password</p>
         <input
           type="password"
           placeholder="Password"
@@ -55,14 +54,12 @@ function Signup() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button type="submit">Create Account</button>
+        <button type="submit">Signup</button>
       </form>
 
-      <div className="auth-footer">
-        <p>
-          Already have an account? <Link to="/login">Login</Link>
-        </p>
-      </div>
+      <a href="/login" className="switch-auth-text">
+        Already have an account? Sign in
+      </a>
     </div>
   );
 }

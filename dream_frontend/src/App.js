@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 
 import DreamForm from "./components/Dream_analyzer/DreamForm";
 import DreamList from "./components/Dream_analyzer/DreamList";
 
+import LandingPage from "./components/Landing/LandingPage";
 import Login from "./components/Login_and_registration/login";
 import Signup from "./components/Login_and_registration/Signup";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -16,6 +17,9 @@ function App() {
   const listRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Toggle landing page on/off
+  const SHOW_LANDING = true;
 
   // ───────────────────────────────
   // FETCH DREAMS
@@ -124,41 +128,44 @@ function App() {
 
       <Routes>
 
+        {/* LANDING PAGE */}
+        <Route path="/welcome" element={<LandingPage />} />
+
         {/* LOGIN */}
-        <Route
-          path="/login"
-          element={<Login onLogin={() => navigate("/")} />}
-        />
+        <Route path="/login" element={<Login onLogin={() => navigate("/")} />} />
 
         {/* SIGNUP */}
         <Route path="/signup" element={<Signup />} />
 
-        {/* PROTECTED DREAM PAGE */}
+        {/* ROOT REDIRECT LOGIC */}
         <Route
           path="/"
           element={
-            <ProtectedRoute>
-              <div className="dream-journal-page">
+            SHOW_LANDING ? (
+              <Navigate to="/welcome" />
+            ) : (
+              <ProtectedRoute>
+                <div className="dream-journal-page">
+                  <button className="logout-btn" onClick={logout}>
+                    Logout
+                  </button>
 
-                <button className="logout-btn" onClick={logout}>
-                  Logout
-                </button>
+                  <h1 className="dream-page-title">AI Dream Analyzer</h1>
 
-                <h1 className="dream-page-title">AI Dream Analyzer</h1>
+                  <div className="dream-dashboard">
 
-                <div className="dream-dashboard">
+                    <div className="dream-form-wrapper">
+                      <DreamForm onAdd={addDream} />
+                    </div>
 
-                  <div className="dream-form-wrapper">
-                    <DreamForm onAdd={addDream} />
+                    <div className="dream-list-wrapper" ref={listRef}>
+                      <DreamList dreams={dreams} onDelete={deleteDream} />
+                    </div>
+
                   </div>
-
-                  <div className="dream-list-wrapper" ref={listRef}>
-                    <DreamList dreams={dreams} onDelete={deleteDream} />
-                  </div>
-
                 </div>
-              </div>
-            </ProtectedRoute>
+              </ProtectedRoute>
+            )
           }
         />
 
