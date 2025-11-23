@@ -123,3 +123,7 @@
   margin-top: 15px;
   display: block;
 }
+
+.page-wrapper {
+  padding-top: 90px; /* a little more than navbar height */
+}

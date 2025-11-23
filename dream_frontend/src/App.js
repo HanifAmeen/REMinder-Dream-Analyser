@@ -9,6 +9,9 @@ import Login from "./components/Login_and_registration/login";
 import Signup from "./components/Login_and_registration/Signup";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+import Navbar from "./components/Common/Navbar/Navbar";
+import Home from "./components/Home/HomePage";   // ← Make sure file name matches
+
 import { authHeaders, logout } from "./auth";
 import "./App.css";
 
@@ -18,12 +21,13 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Toggle landing page on/off
   const SHOW_LANDING = true;
 
-  // ───────────────────────────────
-  // FETCH DREAMS
-  // ───────────────────────────────
+  // Hide navbar only on these pages
+  const hideNavbarRoutes = ["/welcome", "/login", "/signup"];
+  const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname);
+
+  // Fetch dreams
   const fetchDreams = async () => {
     try {
       const res = await fetch("http://127.0.0.1:5000/get_dreams", {
@@ -48,9 +52,6 @@ function App() {
     }
   };
 
-  // ───────────────────────────────
-  // ADD DREAM
-  // ───────────────────────────────
   const addDream = async ({ title, content, mood }) => {
     try {
       const res = await fetch("http://127.0.0.1:5000/add_dream", {
@@ -80,9 +81,6 @@ function App() {
     }
   };
 
-  // ───────────────────────────────
-  // DELETE DREAM
-  // ───────────────────────────────
   const deleteDream = async (id) => {
     try {
       const res = await fetch(`http://127.0.0.1:5000/delete_dream/${id}`, {
@@ -101,16 +99,10 @@ function App() {
     }
   };
 
-  // ───────────────────────────────
-  // FIXED USEEFFECT — NO MORE LOOP
-  // ───────────────────────────────
+  // Fetch dreams except on login/signup
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    // Do NOT fetch dreams if:
-    // - Not logged in
-    // - On login page
-    // - On signup page
     if (!token) return;
     if (location.pathname === "/login" || location.pathname === "/signup") return;
 
@@ -124,7 +116,9 @@ function App() {
   };
 
   return (
-    <div className="app-wrapper">
+    <div className="app-wrapper page-wrapper">
+
+      {!shouldHideNavbar && <Navbar />}
 
       <Routes>
 
@@ -132,45 +126,58 @@ function App() {
         <Route path="/welcome" element={<LandingPage />} />
 
         {/* LOGIN */}
-        <Route path="/login" element={<Login onLogin={() => navigate("/")} />} />
+        <Route
+          path="/login"
+          element={<Login onLogin={() => navigate("/home")} />}
+        />
 
         {/* SIGNUP */}
         <Route path="/signup" element={<Signup />} />
 
-        {/* ROOT REDIRECT LOGIC */}
+        {/* HOME DASHBOARD */}
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ROOT REDIRECT */}
         <Route
           path="/"
           element={
-            SHOW_LANDING ? (
-              <Navigate to="/welcome" />
-            ) : (
-              <ProtectedRoute>
-                <div className="dream-journal-page">
-                  <button className="logout-btn" onClick={logout}>
-                    Logout
-                  </button>
+            SHOW_LANDING
+              ? <Navigate to="/welcome" />
+              : <Navigate to="/dream-analyzer" />
+          }
+        />
 
-                  <h1 className="dream-page-title">AI Dream Analyzer</h1>
+        {/* DREAM ANALYZER */}
+        <Route
+          path="/dream-analyzer"
+          element={
+            <ProtectedRoute>
+              <div className="dream-journal-page">
+                
+                <h1 className="dream-page-title">AI Dream Analyzer</h1>
 
-                  <div className="dream-dashboard">
+                <div className="dream-dashboard">
+                  <div className="dream-form-wrapper">
+                    <DreamForm onAdd={addDream} />
+                  </div>
 
-                    <div className="dream-form-wrapper">
-                      <DreamForm onAdd={addDream} />
-                    </div>
-
-                    <div className="dream-list-wrapper" ref={listRef}>
-                      <DreamList dreams={dreams} onDelete={deleteDream} />
-                    </div>
-
+                  <div className="dream-list-wrapper" ref={listRef}>
+                    <DreamList dreams={dreams} onDelete={deleteDream} />
                   </div>
                 </div>
-              </ProtectedRoute>
-            )
+              </div>
+            </ProtectedRoute>
           }
         />
 
       </Routes>
-
     </div>
   );
 }

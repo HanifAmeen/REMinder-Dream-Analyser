@@ -31,3 +31,8 @@
 html {
   scroll-behavior: smooth;
 }
+
+.page-wrapper {
+  padding-top: 90px; /* a little more than navbar height */
+}
+
