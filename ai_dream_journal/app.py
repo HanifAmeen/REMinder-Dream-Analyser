@@ -1,3 +1,4 @@
+# app.py
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -10,7 +11,7 @@ import json
 import os
 
 # --- AI analysis utilities ---
-from utils.analyzer import analyze_dream
+from utils.analyzer_upgraded import analyze_dream
 
 # ---------------------------------------
 # CONFIG
@@ -40,7 +41,7 @@ class User(db.Model):
 
 
 # ---------------------------------------
-# DREAM MODEL
+# DREAM MODEL (extended with JSON fields)
 # ---------------------------------------
 class Dream(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -54,8 +55,21 @@ class Dream(db.Model):
     combined_insights = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
+    # NEW fields (store JSON as TEXT)
+    events = db.Column(db.Text, nullable=True)
+    entities = db.Column(db.Text, nullable=True)
+    people = db.Column(db.Text, nullable=True)
+    locations = db.Column(db.Text, nullable=True)
+    objects = db.Column(db.Text, nullable=True)
+    cause_effect = db.Column(db.Text, nullable=True)
+    conflicts = db.Column(db.Text, nullable=True)
+    desires = db.Column(db.Text, nullable=True)
+    emotional_arc = db.Column(db.Text, nullable=True)
+    narrative = db.Column(db.Text, nullable=True)
+    analysis_version = db.Column(db.String(80), nullable=True)
 
-# Create database
+
+# Create database (does not alter existing tables)
 with app.app_context():
     db.create_all()
 
@@ -197,16 +211,30 @@ def add_dream():
 
     try:
         analysis = analyze_dream(content, previous_dreams=previous_dreams)
-    except:
+    except Exception:
         traceback.print_exc()
         analysis = {}
 
+    # Legacy fields
     summary = analysis.get("summary", "")
     emotions = analysis.get("emotions", {})
     dominant_emotion = emotions.get("dominant", mood_input)
     themes_list = analysis.get("themes", [])
     symbols_list = analysis.get("symbols", [])
     combined_insights_list = analysis.get("combined_insights", [])
+
+    # New structured fields
+    events = analysis.get("events", [])
+    entities = analysis.get("entities", [])
+    people = analysis.get("people", [])
+    locations = analysis.get("locations", [])
+    objects = analysis.get("objects", [])
+    cause_effect = analysis.get("cause_effect", [])
+    conflicts = analysis.get("conflicts", [])
+    desires = analysis.get("desires", [])
+    emotional_arc = analysis.get("emotional_arc", {})
+    narrative = analysis.get("narrative", {})
+    analysis_version = analysis.get("analysis_version", "analyzer_upgraded_v1")
 
     dream = Dream(
         title=title,
@@ -216,19 +244,43 @@ def add_dream():
         themes=json.dumps(themes_list),
         symbols=json.dumps(symbols_list),
         combined_insights=json.dumps(combined_insights_list),
-        user_id=request.user_id
+        user_id=request.user_id,
+        # new fields persisted as JSON (strings)
+        events=json.dumps(events),
+        entities=json.dumps(entities),
+        people=json.dumps(people),
+        locations=json.dumps(locations),
+        objects=json.dumps(objects),
+        cause_effect=json.dumps(cause_effect),
+        conflicts=json.dumps(conflicts),
+        desires=json.dumps(desires),
+        emotional_arc=json.dumps(emotional_arc),
+        narrative=json.dumps(narrative),
+        analysis_version=analysis_version
     )
 
     db.session.add(dream)
     db.session.commit()
 
+    # Return the useful parts back to frontend (include new fields)
     return jsonify({
         "message": "Dream saved",
         "summary": summary,
         "emotions": emotions,
         "themes": themes_list,
         "symbols": symbols_list,
-        "combined_insights": combined_insights_list
+        "combined_insights": combined_insights_list,
+        "events": events,
+        "entities": entities,
+        "people": people,
+        "locations": locations,
+        "objects": objects,
+        "cause_effect": cause_effect,
+        "conflicts": conflicts,
+        "desires": desires,
+        "emotional_arc": emotional_arc,
+        "narrative": narrative,
+        "analysis_version": analysis_version
     })
 
 
@@ -246,6 +298,49 @@ def get_dreams():
         except:
             symbols, insights, themes = [], [], []
 
+        # parse new fields safely
+        try:
+            events = json.loads(d.events) if d.events else []
+        except:
+            events = []
+        try:
+            entities = json.loads(d.entities) if d.entities else []
+        except:
+            entities = []
+        try:
+            people = json.loads(d.people) if d.people else []
+        except:
+            people = []
+        try:
+            locations = json.loads(d.locations) if d.locations else []
+        except:
+            locations = []
+        try:
+            objects = json.loads(d.objects) if d.objects else []
+        except:
+            objects = []
+        try:
+            cause_effect = json.loads(d.cause_effect) if d.cause_effect else []
+        except:
+            cause_effect = []
+        try:
+            conflicts = json.loads(d.conflicts) if d.conflicts else []
+        except:
+            conflicts = []
+        try:
+            desires = json.loads(d.desires) if d.desires else []
+        except:
+            desires = []
+        try:
+            emotional_arc = json.loads(d.emotional_arc) if d.emotional_arc else {}
+        except:
+            emotional_arc = {}
+        try:
+            narrative = json.loads(d.narrative) if d.narrative else {}
+        except:
+            narrative = {}
+        analysis_version = d.analysis_version if hasattr(d, "analysis_version") else None
+
         result.append({
             "id": d.id,
             "title": d.title,
@@ -255,7 +350,18 @@ def get_dreams():
             "themes": themes,
             "symbols": symbols,
             "combined_insights": insights,
-            "date": d.date.strftime("%Y-%m-%d %H:%M:%S")
+            "date": d.date.strftime("%Y-%m-%d %H:%M:%S"),
+            "events": events,
+            "entities": entities,
+            "people": people,
+            "locations": locations,
+            "objects": objects,
+            "cause_effect": cause_effect,
+            "conflicts": conflicts,
+            "desires": desires,
+            "emotional_arc": emotional_arc,
+            "narrative": narrative,
+            "analysis_version": analysis_version
         })
 
     return jsonify(result)
