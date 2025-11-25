@@ -1,0 +1,189 @@
+/* --- Moon Knight Themed DreamList --- */
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap");
+
+.dream-list-container {
+  margin-top: 40px;
+  width: 100%;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+  font-family: "Orbitron", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(180deg, #0d0d0f 0%, #1a1a1f 100%);
+  color: #e0e0e0;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 0 20px rgba(176, 176, 255, 0.15);
+}
+
+.dream-list-title {
+  text-align: center;
+  color: #b0b0ff;
+  font-size: 28px;
+  margin-bottom: 24px;
+  text-shadow: 0 0 12px #b0b0ff, 0 0 20px #8e24aa;
+  letter-spacing: 1px;
+}
+
+.no-dreams {
+  text-align: center;
+  font-style: italic;
+  color: #777;
+}
+
+/* --- Dream Cards --- */
+.dream-card {
+  background-color: #20202a;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 0 15px rgba(176, 176, 255, 0.15);
+  transition: transform 0.25s, box-shadow 0.3s;
+}
+
+.dream-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0 25px rgba(138, 43, 226, 0.6);
+}
+
+.dream-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  margin-bottom: 10px;
+  font-size: 18px;
+  color: #b0b0ff;
+  text-shadow: 0 0 8px #8e24aa;
+}
+
+/* --- Buttons --- */
+.delete-button,
+.toggle-insights-button {
+  background-color: #8e24aa;
+  border: none;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 6px;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+}
+
+.delete-button:hover,
+.toggle-insights-button:hover {
+  background-color: #6a1b9a;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px #b0b0ff;
+}
+
+/* --- Text Sections --- */
+.dream-summary {
+  font-size: 15px;
+  color: #d8d8ff;
+  background: rgba(30, 30, 40, 0.7);
+  padding: 10px;
+  border-left: 4px solid #8e24aa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.dream-themes {
+  font-style: italic;
+  margin-bottom: 8px;
+  color: #a8a8ff;
+}
+
+.dream-content {
+  font-size: 14px;
+  color: #ccc;
+  line-height: 1.4;
+  margin-top: 6px;
+  margin-bottom: 12px;
+}
+
+/* --- Symbols --- */
+.dream-symbols-box {
+  background: #1f1f2f;
+  padding: 12px;
+  border-radius: 12px;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #e0e0ff;
+  border-left: 3px solid #b0b0ff;
+}
+
+.dream-symbols-box ul {
+  padding-left: 18px;
+  list-style: none;
+}
+
+.dream-symbols-box li::before {
+  content: "🜂 ";
+}
+
+.dream-symbols-box li {
+  margin-bottom: 6px;
+}
+
+/* --- Combined Insights --- */
+.dream-combined-insights {
+  margin-top: 12px;
+}
+
+.insights-content {
+  background: #1c1c2c;
+  padding: 12px;
+  border-radius: 12px;
+  margin-top: 6px;
+  font-size: 14px;
+  color: #b0b0ff;
+  max-height: 250px;
+  overflow-y: auto;
+  border-left: 3px solid #8e24aa;
+  box-shadow: inset 0 0 8px rgba(138, 43, 226, 0.3);
+}
+
+.insights-content p {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* --- Motifs / Recurring --- */
+.dream-motifs,
+.dream-recurring {
+  background: #1f1f1f;
+  padding: 10px;
+  border-left: 4px solid #b0b0ff;
+  border-radius: 8px;
+  font-style: italic;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #a0a0ff;
+}
+
+/* --- Scrollbar for Insights --- */
+.insights-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.insights-content::-webkit-scrollbar-thumb {
+  background-color: #6a1b9a;
+  border-radius: 3px;
+}
+
+/* --- Responsive --- */
+@media (max-width: 600px) {
+  .dream-list-container {
+    padding: 16px;
+  }
+
+  .dream-card {
+    padding: 16px;
+  }
+
+  .dream-list-title {
+    font-size: 22px;
+  }
+}
