@@ -72,7 +72,7 @@ function LandingPage () {
   // Wait one frame so the fade-out class is actually applied
   requestAnimationFrame(() => {
     setTimeout(() => {
-      navigate("/signup");
+      navigate("/login");
     }, 800); // match your CSS fade time
   });
 };

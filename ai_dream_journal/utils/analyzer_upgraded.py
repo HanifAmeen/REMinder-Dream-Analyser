@@ -1,4 +1,4 @@
-# utils/analyzer_upgraded.py
+# utils/analyzer_upgraded.py (UPDATED)
 import os
 import re
 import string
@@ -49,7 +49,13 @@ def exact_match_symbols(text: str) -> List[Dict[str,Any]]:
             patterns.append(rf'\b{re.escape(symbol)}s\b')
         for p in patterns:
             if re.search(p, text_clean):
-                matches.append({"symbol": symbol, "meaning": row['interp_first'], "match_type":"exact"})
+                # mark exact matches with a high semantic_score so they rank highly
+                matches.append({
+                    "symbol": symbol,
+                    "meaning": row.get('interp_first', ''),
+                    "match_type": "exact",
+                    "semantic_score": 0.95
+                })
                 break
     return matches
 
@@ -65,7 +71,12 @@ def semantic_match_symbols(text: str, top_k=12, score_threshold=0.40) -> List[Di
         if score < score_threshold:
             continue
         row = SYMBOL_DF.iloc[idx]
-        results.append({"symbol": row['word_clean'], "meaning": row['interp_first'], "semantic_score": score, "match_type":"semantic"})
+        results.append({
+            "symbol": row['word_clean'],
+            "meaning": row.get('interp_first', ''),
+            "semantic_score": score,
+            "match_type": "semantic"
+        })
     return results
 
 def rank_symbols(text: str, matches: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
@@ -76,12 +87,37 @@ def rank_symbols(text: str, matches: List[Dict[str,Any]]) -> List[Dict[str,Any]]
         count = len(re.findall(rf'\b{re.escape(sym)}\b', text_lower))
         semantic = m.get('semantic_score', 0)
         weight = semantic * 100 + count * 4
+        # emotional proximity bonus (unchanged)
         if re.search(rf"(fear|love|death|pain|joy|anger|sad|happy).*?{re.escape(sym)}", text_lower) or \
            re.search(rf"{re.escape(sym)}.*?(fear|love|death|pain|joy|anger|sad|happy)", text_lower):
             weight += 6
         item = {**m, "weight": round(float(weight), 3), "count": count}
         ranked.append(item)
     return sorted(ranked, key=lambda x: x.get("weight", 0), reverse=True)
+
+# ---------- new: bucketing ----------
+def bucket_symbols_by_weight(ranked_symbols: List[Dict[str,Any]]) -> (List[Dict[str,Any]], List[Dict[str,Any]], List[Dict[str,Any]]):
+    """
+    Buckets ranked symbols into primary / secondary / noise based on weight thresholds:
+      - primary: weight >= 90
+      - secondary: 75 <= weight < 90
+      - noise: weight < 75
+    """
+    primary = []
+    secondary = []
+    noise = []
+    for s in ranked_symbols:
+        try:
+            w = float(s.get("weight", 0))
+        except Exception:
+            w = 0.0
+        if w >= 90:
+            primary.append(s)
+        elif 75 <= w < 90:
+            secondary.append(s)
+        else:
+            noise.append(s)
+    return primary, secondary, noise
 
 # ---------- event extraction / entities / narrative ----------
 def extract_entities_structured(text: str) -> Dict[str, List[Dict[str,str]]]:
@@ -263,12 +299,16 @@ def analyze_dream(text: str, previous_dreams=None, use_llm_fallback=False) -> Di
       - emotional_arc
       - narrative (setup/climax/resolution)
       - analysis_version
+      - symbols_primary / secondary / noise (new)
     """
     result = {
         "summary": "",
         "emotions": {"dominant": "neutral", "scores": []},
         "themes": [],
         "symbols": [],
+        "symbols_primary": [],
+        "symbols_secondary": [],
+        "symbols_noise": [],
         "combined_insights": [],
         "archetype": None,
         "coherence_score": 0,
@@ -284,7 +324,7 @@ def analyze_dream(text: str, previous_dreams=None, use_llm_fallback=False) -> Di
         "desires": [],
         "emotional_arc": {},
         "narrative": {},
-        "analysis_version": "analyzer_upgraded_v1"
+        "analysis_version": "analyzer_upgraded_v2"
     }
 
     if not text or not str(text).strip():
@@ -325,7 +365,7 @@ def analyze_dream(text: str, previous_dreams=None, use_llm_fallback=False) -> Di
     except Exception as e:
         print("[analyzer_upgraded] structured extraction error:", e)
 
-    # symbols: union of semantic + exact
+    # symbols: union of semantic + exact, then rank, then bucket
     try:
         sem = semantic_match_symbols(text, top_k=20, score_threshold=0.40)
         exacts = exact_match_symbols(text)
@@ -333,16 +373,29 @@ def analyze_dream(text: str, previous_dreams=None, use_llm_fallback=False) -> Di
         for e in exacts:
             sym = e['symbol']
             if sym in merged:
+                # preserve meaning if present, mark exact+semantic and boost semantic_score
                 merged[sym]['meaning'] = merged[sym].get('meaning') or e.get('meaning')
                 merged[sym]['match_type'] = 'exact+semantic'
                 merged[sym]['semantic_score'] = max(merged[sym].get('semantic_score', 0), 0.95)
             else:
                 merged[sym] = {**e, 'semantic_score': 0.95}
         candidates = list(merged.values())
-        result["symbols"] = rank_symbols(text, candidates)
+        ranked = rank_symbols(text, candidates)
+
+        # bucket by weight thresholds: primary >=90, secondary 75-89, noise <75
+        primary, secondary, noise = bucket_symbols_by_weight(ranked)
+
+        result["symbols"] = ranked
+        result["symbols_primary"] = primary
+        result["symbols_secondary"] = secondary
+        result["symbols_noise"] = noise
+
     except Exception as e:
         print("[analyzer_upgraded] symbol error:", e)
         result["symbols"] = []
+        result["symbols_primary"] = []
+        result["symbols_secondary"] = []
+        result["symbols_noise"] = []
 
     try:
         result["combined_insights"] = combined_insights_from_symbols(result["symbols"], result["emotions"].get("dominant"))

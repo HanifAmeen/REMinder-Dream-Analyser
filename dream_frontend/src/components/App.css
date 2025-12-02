@@ -7,7 +7,7 @@
   min-height: 100vh;
   max-height: 100vh;
   overflow-y: auto; /* Allows scrolling when list grows */
-  background: linear-gradient(to bottom, #e0f7fa, #fce4ec);
+  background: linear-gradient(to bottom, #e0f7fa, #e20c53);
   box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -32,7 +32,4 @@ html {
   scroll-behavior: smooth;
 }
 
-.page-wrapper {
-  padding-top: 90px; /* a little more than navbar height */
-}
 

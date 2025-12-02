@@ -1,16 +1,35 @@
-/* Entire landing container */
+/* =============================
+   MAIN WRAPPER — FULL SCREEN FIX
+============================== */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 .LandingPage-Container {
+  width: 100vw;
+  height: 100vh; /* 🔥 IMPORTANT — FIXES YOUR WHITE SPACE */
+
   display: flex;
   flex-direction: column;
   align-items: center;
-  opacity: 1;   /* ← REQUIRED */
- width: 100%;
-max-width: 1500px;
+  justify-content: center;
 
+  padding: 40px 20px;
+  box-sizing: border-box;
+
+  overflow: hidden;
+
+  /* TEMP BACKGROUND — change to your preferred one */
+  background: radial-gradient(circle at top, #2f195b, #0b0f1a);
   
+  position: relative;
+  opacity: 1;
 }
 
-/* Page fade-in */
+/* Fade-in animation */
 .page-fade-in {
   opacity: 0;
   animation: pageFade 1.2s ease forwards;
@@ -21,140 +40,100 @@ max-width: 1500px;
   to   { opacity: 1; }
 }
 
+/* =======================================
+   STAR BACKGROUNDS — FIXED TO FULL SCREEN
+======================================= */
+.stars, .stars2 {
+  position: absolute;
+  top: 0; left: 0;
 
-/* --- LOGO --- */
+  width: 100%;
+  height: 100%;
+
+  z-index: -1; /* Keep them behind content */
+  background-repeat: repeat;
+}
+
+/* ======================================
+   LOGO FLOAT
+====================================== */
 .landing-logo {
   width: 160px;
-  height: auto;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
   opacity: 0.95;
   animation: float 3s ease-in-out infinite;
 }
 
 @keyframes float {
   0%   { transform: translateY(0px); }
-  50%  { transform: translateY(-6px); }
+  50%  { transform: translateY(-8px); }
   100% { transform: translateY(0px); }
 }
 
-/* HEADER — locked height so it NEVER moves */
-/* ✦ SHIMMER ANIMATION (must be outside any selector) ✦ */
-@keyframes shimmer {
-  0% {
-    text-shadow:
-      0 0 6px rgba(255,255,255,0.7),
-      0 0 12px rgba(255,255,255,0.5),
-      0 0 20px rgba(255,255,255,0.4);
-  }
-  50% {
-    text-shadow:
-      0 0 12px rgba(255,255,255,1),
-      0 0 25px rgba(255,255,255,0.9),
-      0 0 35px rgba(255,255,255,0.7);
-  }
-  100% {
-    text-shadow:
-      0 0 6px rgba(255,255,255,0.7),
-      0 0 12px rgba(255,255,255,0.5),
-      0 0 20px rgba(255,255,255,0.4);
-  }
-}
-
-/* ✦ HEADER SECTION WRAPPER ✦ */
+/* HEADER */
 .header-section {
-  height: 150px;                
-  display: flex;
-  flex-direction: column;
-  justify-content: center;      
-  align-items: center;
   text-align: center;
+  margin-bottom: 25px;
+  padding: 10px 0;
 }
 
-/* ✦ MAIN TITLE WITH SHIMMER ✦ */
 .header-section h1 {
   margin: 0;
   font-size: 3rem;
-  color: #ffffff;
-
+  color: white;
   text-shadow:
     0 0 6px rgba(255,255,255,0.7),
     0 0 12px rgba(255,255,255,0.5),
     0 0 20px rgba(255,255,255,0.4);
-
-  animation: shimmer 3s infinite ease-in-out;
 }
 
-/* ✦ SUBTITLE (no glow) ✦ */
 .header-section .subtitle {
-  margin: 10px 0 0 0;
+  margin-top: 12px;
   font-size: 1.3rem;
-  opacity: 0.8;
-  color: white;
 }
 
-/* Quote box */
+/* QUOTE SECTION */
 .quote-box {
-  height: 150px;                /* also fixed */
-  display: flex;
-  justify-content: center;
-  align-items: center;
   text-align: center;
+  margin-bottom: 30px;
   padding: 10px 20px;
 }
 
-/* Quote text */
 .quote-box p {
-  margin: 0;
   font-size: 1.2rem;
+  line-height: 1.4;
 }
 
-.fade-in {
-  opacity: 1;
-  transition: opacity 0.8s ease;
-}
-
-.fade-out {
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-
+/* CONTINUE BUTTON */
 .continue-button {
-  width: 165px;
+  width: 180px;
   height: 62px;
   cursor: pointer;
   color: #fff;
   font-size: 17px;
   border-radius: 1rem;
   border: none;
-  position: relative;
   background: #100720;
-  transition: 0.1s;
+  position: relative;
+  transition: 0.1s ease-in-out;
 }
 
 .continue-button::after {
   content: '';
   width: 100%;
   height: 100%;
-  background-image: radial-gradient( circle farthest-corner at 10% 20%,  rgba(255,94,247,1) 17.8%, rgba(2,245,255,1) 100.2% );
+  background-image: radial-gradient(circle at 10% 20%, rgba(255,94,247,1), rgba(2,245,255,1));
   filter: blur(15px);
   z-index: -1;
   position: absolute;
-  left: 0;
-  top: 0;
 }
 
 .continue-button:active {
-  transform: scale(0.9) rotate(3deg);
-  background: radial-gradient( circle farthest-corner at 10% 20%,  rgba(255,94,247,1) 17.8%, rgba(2,245,255,1) 100.2% );
-  transition: 0.5s;
+  transform: scale(0.92) rotate(2deg);
 }
 
-/* Full-page fade-out triggered by Continue button */
+/* EXIT ANIMATION */
 .LandingPage-Container.fade-out {
   opacity: 0;
-  transition: opacity 0.8s ease;
-}
-
-.fade-out {
   transition: opacity 0.8s ease;
 }

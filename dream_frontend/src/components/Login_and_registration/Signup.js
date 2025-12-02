@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import "./auth.css";
 
 function Signup() {
@@ -28,38 +28,45 @@ function Signup() {
   };
 
   return (
-    <div className="auth-container">
-      <h2>Signup</h2>
+    <div className="auth-page"> {/* Full background wrapper */}
+      <div className="auth-container"> {/* Glass card */}
+        <h2>Signup</h2>
 
-      <form onSubmit={submitSignup} className="auth-form">
-        <p>Email</p>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-         <p>Username</p>
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-         <p>Password</p>
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <form onSubmit={submitSignup} className="auth-form">
+          
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            required
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-        <button type="submit">Signup</button>
-      </form>
+       
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            required
+            onChange={(e) => setUsername(e.target.value)}
+          />
 
-      <a href="/login" className="switch-auth-text">
-        Already have an account? Sign in
-      </a>
+        
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            required
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <button type="submit">Signup</button>
+        </form>
+
+        <div className="auth-footer">
+          <Link to="/login">Already have an account? Sign in</Link>
+        </div>
+      </div>
     </div>
   );
 }

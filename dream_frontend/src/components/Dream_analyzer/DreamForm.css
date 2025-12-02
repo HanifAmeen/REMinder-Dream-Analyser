@@ -6,10 +6,10 @@ body {
   margin: 0;
   font-family: 'Orbitron', 'Segoe UI', Tahoma, Verdana, sans-serif;
   background: linear-gradient(to bottom, #0b0b0f, #1a1a24);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+
+
+
+
   color: #e0e0ff;
 }
 
@@ -19,13 +19,16 @@ body {
 /* Container for the form */
 .dream-form-container {
   background-color: rgba(20, 20, 30, 0.95);
-  padding: 40px;
-  border-radius: 20px;
-  box-shadow: 0 10px 25px rgba(138, 43, 226, 0.4);
-  width: 1080px;
+  padding: 75px; /* reduced padding */
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(138, 43, 226, 0.35);
+  width: 100%;
+  max-width: 100%; /* match column width */
   text-align: center;
-  border: 2px solid #6a1b9a;
+  border: 1px solid #6a1b9a;
+  box-sizing: border-box; /* prevents overflow */
 }
+
 
 /* Title styling */
 .dream-form-title {

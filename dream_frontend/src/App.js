@@ -1,16 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 
-import DreamForm from "./components/Dream_analyzer/DreamForm";
-import DreamList from "./components/Dream_analyzer/DreamList";
-
+import DreamAnalyzer from "./components/Dream_analyzer/DreamAnalyzer";
 import LandingPage from "./components/Landing/LandingPage";
 import Login from "./components/Login_and_registration/login";
 import Signup from "./components/Login_and_registration/Signup";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Navbar from "./components/Common/Navbar/Navbar";
-import Home from "./components/Home/HomePage";   // ← Make sure file name matches
+import Home from "./components/Home/HomePage";
 
 import { authHeaders, logout } from "./auth";
 import "./App.css";
@@ -23,9 +21,9 @@ function App() {
 
   const SHOW_LANDING = true;
 
-  // Hide navbar only on these pages
-  const hideNavbarRoutes = ["/welcome", "/login", "/signup"];
-  const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname);
+  // Pages that must NOT have Navbar or the App wrapper
+  const standalonePages = ["/welcome", "/login", "/signup"];
+  const isStandalone = standalonePages.includes(location.pathname);
 
   // Fetch dreams
   const fetchDreams = async () => {
@@ -99,13 +97,11 @@ function App() {
     }
   };
 
-  // Fetch dreams except on login/signup
+  // Fetch dreams except on login/signup/welcome
   useEffect(() => {
     const token = localStorage.getItem("token");
-
     if (!token) return;
-    if (location.pathname === "/login" || location.pathname === "/signup") return;
-
+    if (isStandalone) return;
     fetchDreams();
   }, [location.pathname]);
 
@@ -116,69 +112,49 @@ function App() {
   };
 
   return (
-    <div className="app-wrapper page-wrapper">
+    <>
+      {/* Standalone Public Pages (NO APP WRAPPER) */}
+      {isStandalone ? (
+        <Routes>
+          <Route path="/welcome" element={<LandingPage />} />
+          <Route path="/login" element={<Login onLogin={() => navigate("/home")} />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/" element={<Navigate to="/welcome" />} />
+        </Routes>
+      ) : (
+        /* Authenticated Pages Use App Wrapper */
+        <div className="page-wrapper">
+          <Navbar />
 
-      {!shouldHideNavbar && <Navbar />}
+          <Routes>
+            <Route
+              path="/home"
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              }
+            />
 
-      <Routes>
+            <Route
+              path="/dream-analyzer"
+              element={
+                <ProtectedRoute>
+                  <DreamAnalyzer
+                    dreams={dreams}
+                    onAdd={addDream}
+                    onDelete={deleteDream}
+                    listRef={listRef}
+                  />
+                </ProtectedRoute>
+              }
+            />
 
-        {/* LANDING PAGE */}
-        <Route path="/welcome" element={<LandingPage />} />
-
-        {/* LOGIN */}
-        <Route
-          path="/login"
-          element={<Login onLogin={() => navigate("/home")} />}
-        />
-
-        {/* SIGNUP */}
-        <Route path="/signup" element={<Signup />} />
-
-        {/* HOME DASHBOARD */}
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ROOT REDIRECT */}
-        <Route
-          path="/"
-          element={
-            SHOW_LANDING
-              ? <Navigate to="/welcome" />
-              : <Navigate to="/dream-analyzer" />
-          }
-        />
-
-        {/* DREAM ANALYZER */}
-        <Route
-          path="/dream-analyzer"
-          element={
-            <ProtectedRoute>
-              <div className="dream-journal-page">
-                
-                <h1 className="dream-page-title">AI Dream Analyzer</h1>
-
-                <div className="dream-dashboard">
-                  <div className="dream-form-wrapper">
-                    <DreamForm onAdd={addDream} />
-                  </div>
-
-                  <div className="dream-list-wrapper" ref={listRef}>
-                    <DreamList dreams={dreams} onDelete={deleteDream} />
-                  </div>
-                </div>
-              </div>
-            </ProtectedRoute>
-          }
-        />
-
-      </Routes>
-    </div>
+            <Route path="/" element={<Navigate to="/welcome" />} />
+          </Routes>
+        </div>
+      )}
+    </>
   );
 }
 

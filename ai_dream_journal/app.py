@@ -1,4 +1,4 @@
-# app.py
+# app.py (UPDATED FOR SYMBOL BUCKETS)
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -41,7 +41,7 @@ class User(db.Model):
 
 
 # ---------------------------------------
-# DREAM MODEL (extended with JSON fields)
+# DREAM MODEL
 # ---------------------------------------
 class Dream(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -55,7 +55,7 @@ class Dream(db.Model):
     combined_insights = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    # NEW fields (store JSON as TEXT)
+    # Structured fields
     events = db.Column(db.Text, nullable=True)
     entities = db.Column(db.Text, nullable=True)
     people = db.Column(db.Text, nullable=True)
@@ -69,7 +69,6 @@ class Dream(db.Model):
     analysis_version = db.Column(db.String(80), nullable=True)
 
 
-# Create database (does not alter existing tables)
 with app.app_context():
     db.create_all()
 
@@ -83,17 +82,12 @@ def make_token(user_id):
         "exp": datetime.utcnow() + timedelta(hours=24)
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-
-    if isinstance(token, bytes):
-        token = token.decode("utf-8")
-
-    return token
+    return token.decode("utf-8") if isinstance(token, bytes) else token
 
 
 def decode_token(token):
     try:
-        data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return data["user_id"]
+        return jwt.decode(token, SECRET_KEY, algorithms=["HS256"])["user_id"]
     except Exception:
         return None
 
@@ -107,7 +101,6 @@ def auth_required(f):
 
         token = header.split(" ", 1)[1].strip()
         user_id = decode_token(token)
-
         if not user_id:
             return jsonify({"error": "Invalid or expired token"}), 401
 
@@ -122,7 +115,6 @@ def auth_required(f):
 @app.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json() or {}
-
     email = data.get("email", "").strip().lower()
     username = data.get("username", "").strip()
     password = data.get("password", "")
@@ -132,12 +124,10 @@ def signup():
 
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Email already exists"}), 400
-
     if User.query.filter_by(username=username).first():
         return jsonify({"error": "Username already exists"}), 400
 
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
     user = User(email=email, username=username, password_hash=hashed)
     db.session.add(user)
     db.session.commit()
@@ -148,40 +138,29 @@ def signup():
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json() or {}
-
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
 
     user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({"error": "Invalid credentials"}), 401
-
-    if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+    if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
         return jsonify({"error": "Invalid credentials"}), 401
 
     token = make_token(user.id)
 
     return jsonify({
         "token": token,
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "username": user.username
-        }
+        "user": {"id": user.id, "email": user.email, "username": user.username}
     })
 
 
 # ---------------------------------------
-# PUBLIC ROUTE
+# MAIN ROUTES
 # ---------------------------------------
 @app.route('/')
 def index():
     return "Dream Journal Backend Running"
 
 
-# ---------------------------------------
-# PROTECTED DREAM ROUTES
-# ---------------------------------------
 @app.route('/add_dream', methods=['POST'])
 @auth_required
 def add_dream():
@@ -194,36 +173,39 @@ def add_dream():
     if not title or not content:
         return jsonify({"error": "Title and content required"}), 400
 
-    # Previous dreams only for THIS user
-    previous_dreams = []
-    user_dreams = Dream.query.filter_by(user_id=request.user_id).all()
-
-    for d in user_dreams:
+    # previous dreams for recurrence detection
+    previous = []
+    for d in Dream.query.filter_by(user_id=request.user_id).all():
         try:
             prev_symbols = json.loads(d.symbols) if d.symbols else []
         except:
             prev_symbols = []
+        previous.append({"content": d.content, "symbols": prev_symbols})
 
-        previous_dreams.append({
-            "content": d.content,
-            "symbols": prev_symbols
-        })
-
+    # run analyzer
     try:
-        analysis = analyze_dream(content, previous_dreams=previous_dreams)
+        analysis = analyze_dream(content, previous_dreams=previous)
     except Exception:
         traceback.print_exc()
         analysis = {}
 
-    # Legacy fields
+    # --------------------------
+    # Pull analysis fields
+    # --------------------------
     summary = analysis.get("summary", "")
     emotions = analysis.get("emotions", {})
     dominant_emotion = emotions.get("dominant", mood_input)
     themes_list = analysis.get("themes", [])
     symbols_list = analysis.get("symbols", [])
+
+    # NEW BUCKETS
+    symbols_primary = analysis.get("symbols_primary", [])
+    symbols_secondary = analysis.get("symbols_secondary", [])
+    symbols_noise = analysis.get("symbols_noise", [])
+
     combined_insights_list = analysis.get("combined_insights", [])
 
-    # New structured fields
+    # structured fields
     events = analysis.get("events", [])
     entities = analysis.get("entities", [])
     people = analysis.get("people", [])
@@ -234,18 +216,22 @@ def add_dream():
     desires = analysis.get("desires", [])
     emotional_arc = analysis.get("emotional_arc", {})
     narrative = analysis.get("narrative", {})
-    analysis_version = analysis.get("analysis_version", "analyzer_upgraded_v1")
+    analysis_version = analysis.get("analysis_version", "analyzer_upgraded_v2")
 
+    # --------------------------
+    # Save dream
+    # --------------------------
     dream = Dream(
         title=title,
         content=content,
         mood=dominant_emotion,
         summary=summary,
         themes=json.dumps(themes_list),
-        symbols=json.dumps(symbols_list),
+        symbols=json.dumps(symbols_list),  # keep main list
         combined_insights=json.dumps(combined_insights_list),
         user_id=request.user_id,
-        # new fields persisted as JSON (strings)
+
+        # structured fields
         events=json.dumps(events),
         entities=json.dumps(entities),
         people=json.dumps(people),
@@ -262,14 +248,24 @@ def add_dream():
     db.session.add(dream)
     db.session.commit()
 
-    # Return the useful parts back to frontend (include new fields)
+    # --------------------------
+    # Return API response (NOW INCLUDES BUCKETS)
+    # --------------------------
     return jsonify({
         "message": "Dream saved",
         "summary": summary,
         "emotions": emotions,
         "themes": themes_list,
+
+        # symbols
         "symbols": symbols_list,
+        "symbols_primary": symbols_primary,
+        "symbols_secondary": symbols_secondary,
+        "symbols_noise": symbols_noise,
+
         "combined_insights": combined_insights_list,
+
+        # structured
         "events": events,
         "entities": entities,
         "people": people,
@@ -280,6 +276,7 @@ def add_dream():
         "desires": desires,
         "emotional_arc": emotional_arc,
         "narrative": narrative,
+
         "analysis_version": analysis_version
     })
 
@@ -288,9 +285,10 @@ def add_dream():
 @auth_required
 def get_dreams():
     dreams = Dream.query.filter_by(user_id=request.user_id).order_by(Dream.date.desc()).all()
-
     result = []
+
     for d in dreams:
+        # legacy fields
         try:
             symbols = json.loads(d.symbols) if d.symbols else []
             insights = json.loads(d.combined_insights) if d.combined_insights else []
@@ -298,48 +296,30 @@ def get_dreams():
         except:
             symbols, insights, themes = [], [], []
 
-        # parse new fields safely
-        try:
-            events = json.loads(d.events) if d.events else []
-        except:
-            events = []
-        try:
-            entities = json.loads(d.entities) if d.entities else []
-        except:
-            entities = []
-        try:
-            people = json.loads(d.people) if d.people else []
-        except:
-            people = []
-        try:
-            locations = json.loads(d.locations) if d.locations else []
-        except:
-            locations = []
-        try:
-            objects = json.loads(d.objects) if d.objects else []
-        except:
-            objects = []
-        try:
-            cause_effect = json.loads(d.cause_effect) if d.cause_effect else []
-        except:
-            cause_effect = []
-        try:
-            conflicts = json.loads(d.conflicts) if d.conflicts else []
-        except:
-            conflicts = []
-        try:
-            desires = json.loads(d.desires) if d.desires else []
-        except:
-            desires = []
-        try:
-            emotional_arc = json.loads(d.emotional_arc) if d.emotional_arc else {}
-        except:
-            emotional_arc = {}
-        try:
-            narrative = json.loads(d.narrative) if d.narrative else {}
-        except:
-            narrative = {}
-        analysis_version = d.analysis_version if hasattr(d, "analysis_version") else None
+        # structured
+        def safe_json(txt):
+            try: return json.loads(txt) if txt else None
+            except: return None
+
+        events = safe_json(d.events) or []
+        entities = safe_json(d.entities) or []
+        people = safe_json(d.people) or []
+        locations = safe_json(d.locations) or []
+        objects = safe_json(d.objects) or []
+        cause_effect = safe_json(d.cause_effect) or []
+        conflicts = safe_json(d.conflicts) or []
+        desires = safe_json(d.desires) or []
+        emotional_arc = safe_json(d.emotional_arc) or {}
+        narrative = safe_json(d.narrative) or {}
+        analysis_version = d.analysis_version
+
+        # IMPORTANT:
+        # Older dreams will NOT have bucket fields saved.
+        # We recompute them from ranked symbols on frontend OR leave empty.
+        # For now we return empty arrays for old dreams.
+        symbols_primary = []
+        symbols_secondary = []
+        symbols_noise = []
 
         result.append({
             "id": d.id,
@@ -348,9 +328,15 @@ def get_dreams():
             "mood": d.mood,
             "summary": d.summary,
             "themes": themes,
+
             "symbols": symbols,
+            "symbols_primary": symbols_primary,
+            "symbols_secondary": symbols_secondary,
+            "symbols_noise": symbols_noise,
+
             "combined_insights": insights,
             "date": d.date.strftime("%Y-%m-%d %H:%M:%S"),
+
             "events": events,
             "entities": entities,
             "people": people,
@@ -371,13 +357,10 @@ def get_dreams():
 @auth_required
 def delete_dream(id):
     dream = Dream.query.get_or_404(id)
-
     if dream.user_id != request.user_id:
         return jsonify({"error": "Unauthorized"}), 403
-
     db.session.delete(dream)
     db.session.commit()
-
     return jsonify({"message": "Dream deleted"})
 
 

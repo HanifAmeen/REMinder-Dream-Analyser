@@ -12,7 +12,7 @@
   justify-content: space-between;
   align-items: center;
 
-  background: rgba(10, 8, 16, 0.55);
+  background: radial-gradient(circle at top, #372658, #2a375c);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255,255,255,0.12);
 
@@ -57,7 +57,7 @@
 }
 
 /* LOGOUT (STYLED LIKE A LINK) */
-.logout-btn {
+.logout-button {
   background: none;
   border: none;
   color: #ff6d6d;

@@ -187,3 +187,47 @@
     font-size: 22px;
   }
 }
+
+/* --- SYMBOL BLOCKS (Option B2) --- */
+
+.symbols-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.symbol-box {
+  background: #1c1c28;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(150, 140, 255, 0.15);
+  border-left: 3px solid #8e24aa;
+  transition: 0.2s;
+}
+
+.symbol-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 16px rgba(150, 140, 255, 0.4);
+}
+
+.symbol-title {
+  font-weight: bold;
+  font-size: 15px;
+  color: #b0b0ff;
+  margin-bottom: 6px;
+  text-shadow: 0 0 6px #8e24aa;
+}
+
+.symbol-meaning {
+  font-size: 13px;
+  color: #e0e0ff;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.symbol-score {
+  font-size: 12px;
+  color: #9f9fff;
+  opacity: 0.85;
+}
