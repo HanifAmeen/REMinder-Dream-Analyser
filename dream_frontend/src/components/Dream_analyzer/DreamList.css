@@ -231,3 +231,97 @@
   color: #9f9fff;
   opacity: 0.85;
 }
+
+/* --- Symbol Sort Toggle --- */
+.symbol-sort-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: rgba(25, 25, 38, 0.7);
+  border-radius: 10px;
+  border-left: 3px solid #8e24aa;
+  box-shadow: 0 0 8px rgba(138, 43, 226, 0.25);
+}
+
+.symbol-sort-toggle span {
+  font-size: 13px;
+  color: #b0b0ff;
+  opacity: 0.85;
+  letter-spacing: 0.5px;
+}
+
+/* Sort Buttons */
+.symbol-sort-toggle button {
+  background: #1c1c28;
+  border: 1px solid #8e24aa;
+  color: #d8d8ff;
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  letter-spacing: 0.4px;
+}
+
+.symbol-sort-toggle button:hover {
+  background: #8e24aa;
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 0 10px rgba(176, 176, 255, 0.5);
+}
+
+/* Active Sort Button */
+.symbol-sort-toggle .sort-active {
+  background: linear-gradient(90deg, #8e24aa, #b0b0ff);
+  border-color: #b0b0ff;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(176, 176, 255, 0.8), 0 0 20px rgba(142, 36, 170, 0.6);
+  transform: translateY(-1px);
+}
+
+
+/* PSYCHOLOGICAL INTERPRETATION */
+.psych-container {
+  padding: 14px;
+  background: rgba(50, 50, 80, 0.35);
+  border-radius: 8px;
+  margin-top: 10px;
+  color: #e8e8ff;
+  line-height: 1.55;
+}
+
+.psych-overall {
+  font-size: 15px;
+  margin-bottom: 16px;
+  padding: 10px;
+  background: rgba(120, 120, 200, 0.15);
+  border-left: 3px solid #b0b0ff;
+  border-radius: 6px;
+}
+
+.psych-section {
+  margin-bottom: 18px;
+}
+
+.psych-section-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #d0d0ff;
+  margin-bottom: 6px;
+}
+
+.psych-section-body {
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.psych-summary {
+  margin-top: 16px;
+  font-size: 14px;
+  background: rgba(90, 90, 160, 0.2);
+  padding: 10px;
+  border-radius: 6px;
+}

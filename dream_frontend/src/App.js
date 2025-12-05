@@ -1,3 +1,4 @@
+// App.js
 import React, { useEffect, useState, useRef } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 
@@ -16,12 +17,10 @@ import "./App.css";
 function App() {
   const [dreams, setDreams] = useState([]);
   const listRef = useRef(null);
+
   const navigate = useNavigate();
   const location = useLocation();
 
-  const SHOW_LANDING = true;
-
-  // Pages that must NOT have Navbar or the App wrapper
   const standalonePages = ["/welcome", "/login", "/signup"];
   const isStandalone = standalonePages.includes(location.pathname);
 
@@ -38,13 +37,8 @@ function App() {
         return;
       }
 
-      if (!res.ok) {
-        console.error("Backend error:", await res.text());
-        return;
-      }
-
       const data = await res.json();
-      setDreams(data);
+      setDreams(data || []);
     } catch (err) {
       console.error("Error fetching dreams:", err);
     }
@@ -65,14 +59,10 @@ function App() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to save dream");
-      }
-
       await fetchDreams();
       scrollToBottom();
-      return data;
 
+      return data;
     } catch (err) {
       console.error("Error adding dream:", err);
       throw err;
@@ -81,15 +71,10 @@ function App() {
 
   const deleteDream = async (id) => {
     try {
-      const res = await fetch(`http://127.0.0.1:5000/delete_dream/${id}`, {
+      await fetch(`http://127.0.0.1:5000/delete_dream/${id}`, {
         method: "DELETE",
         headers: authHeaders(),
       });
-
-      if (res.status === 401) {
-        logout();
-        return;
-      }
 
       await fetchDreams();
     } catch (err) {
@@ -97,7 +82,6 @@ function App() {
     }
   };
 
-  // Fetch dreams except on login/signup/welcome
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -113,7 +97,6 @@ function App() {
 
   return (
     <>
-      {/* Standalone Public Pages (NO APP WRAPPER) */}
       {isStandalone ? (
         <Routes>
           <Route path="/welcome" element={<LandingPage />} />
@@ -122,7 +105,6 @@ function App() {
           <Route path="/" element={<Navigate to="/welcome" />} />
         </Routes>
       ) : (
-        /* Authenticated Pages Use App Wrapper */
         <div className="page-wrapper">
           <Navbar />
 
